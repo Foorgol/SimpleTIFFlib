@@ -6,22 +6,30 @@ package org.nodomain.volkerk.SimpleTIFFlib;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- *
- * @author volker
+ * A class for flexible access to an array of bytes
  */
 public class FlexByteArray {
     
+    /**
+     * The data which is maintained by this class
+     */
     protected byte[] data;
     
+    /**
+     * A flag whether the byte order should be swapped when reading multi-byte values
+     * The default for this class -- without swapping -- is little endian (LSB at lower array index)
+     */
     protected boolean swapBytes = false;
     
+    /**
+     * Constructor. Copies / clones an existing byte array
+     * 
+     * @param inData array of bytes containing the data for this class.
+     */
     public FlexByteArray(byte[] inData)
     {
         if (inData == null) throw new IllegalArgumentException();
@@ -48,7 +56,7 @@ public class FlexByteArray {
     }
     
     /**
-     * This class assumed all data in little endian (LSB at lower array index). If data is in MSB, you need to set swapBytes to true
+     * This class assumes all data in little endian (LSB at lower array index). If data is in MSB, you need to set swapBytes to true
      * 
      * @param doSwapBytes set to true to process big endian data (MSB first)
      */
@@ -57,6 +65,11 @@ public class FlexByteArray {
         swapBytes = doSwapBytes;
     }
     
+    /**
+     * Returns the current endianess
+     * 
+     * @return true if bytes are interpreted as big endian (MSB first), false for LSB first
+     */
     public boolean getSwap()
     {
         return swapBytes;
@@ -65,12 +78,12 @@ public class FlexByteArray {
     /**
      * Checks whether "count" bytes starting at 0-based offset "offset" are available in the array
      * 
-     * Directly throws an exception
+     * Directly throws an exception if bounds are exceed
      * 
      * @param offset the 0-based starting position
      * @param count the number of bytes to check for
      */
-    protected void checkBoundary(int offset, int count)
+    protected void assertArrayBoundary(int offset, int count)
     {
         if ((offset < 0) || (count < 0)) throw new IllegalArgumentException();
         
@@ -79,9 +92,18 @@ public class FlexByteArray {
         if (lastByteOffset >= data.length) throw new IllegalArgumentException("Requested offset " + lastByteOffset + " is beyond the file end at " + data.length);
     }
     
+    /**
+     * Takes a slice of data, inverses the byte sequence, if necessary, and returns it
+     * 
+     * Throws an exception if the requested data slice exceeds the array boundaries
+     * 
+     * @param offset the offset of the first byte of the slice (0-based)
+     * @param count the number of bytes to retrieve
+     * @return count bytes from the array; if necessary in inversed order, depending on the swap status
+     */
     protected byte[] getSwappedSlice(int offset, int count)
     {
-        checkBoundary(offset, count);
+        assertArrayBoundary(offset, count);
         byte[] result = new byte[count];
         
         // copy the data incl. possible swapping
@@ -98,69 +120,136 @@ public class FlexByteArray {
         }
         
         return result;
-        
     }
     
+    /**
+     * Retrieves an 8-bit unsigned integer from the array
+     * 
+     * Note: a normal "byte" in java is a SIGNED 8-bit value (-127...128), thus we have to return the result as int (not byte) and apply the 2s-complement
+     * 
+     * @param offset the position of the byte in the array
+     * @return a value between 0...255, according to the byte value
+     */
     public int getByte(int offset)
     {
-        checkBoundary(offset, 1);
+        assertArrayBoundary(offset, 1);
         return (data[offset] & 0xff);
     }
     
+    /**
+     * Stores a an 8-bit unsigned integer in the array
+     * 
+     * @param offset the position of the byte in the data array
+     * @param newVal the value to write to the bit
+     */
     public void setByte(int offset, int newVal)
     {
-        checkBoundary(offset, 1);
+        assertArrayBoundary(offset, 1);
         
+        // make sure that the value is between 0...255
         newVal = newVal & 0xFF;
+        
+        // cast and store
         byte b = (byte) newVal;
         data[offset] = b;
     }
     
+    /**
+     * Retrieves an 8-bit signed integer from the array
+     * 
+     * @param offset the position of the byte in the array
+     * @return a value between -127...128, according to the byte value
+     */
     public byte getSignedByte(int offset)
     {
-        checkBoundary(offset, 1);
+        assertArrayBoundary(offset, 1);
         return data[offset];
     }
     
+    /**
+     * Retrieves an 16-bit unsigned integer from the array
+     * 
+     * @param offset the position of the first byte in the array
+     * @return a value between 0...65535, according to the byte values
+     */
     public int getUint16(int offset)
     {
-        checkBoundary(offset, 2);
+        assertArrayBoundary(offset, 2);
         
+        // adjust byte order, if necessary
         byte[] tmp = getSwappedSlice(offset, 2);
         
+        // compute the 16-bit value
         return (tmp[0] & 0xff) + (tmp[1] & 0xff) *256;
     }
             
+    /**
+     * Retrieves an 16-bit signed integer from the array
+     * 
+     * @param offset the position of the first byte in the array
+     * @return a value between -32767...32768, according to the byte values
+     */
     public int getSint16(int offset)
     {
-        checkBoundary(offset, 2);
+        assertArrayBoundary(offset, 2);
         
+        // retrieve the "pure data" as unsigned word
+        // and convert it into a bit string
         int u = getUint16(offset);
         String tmp = Integer.toBinaryString(u);
+        
+        // interpret the bit string as a signed 16-bit integer
         short result = (short)Integer.parseInt(tmp, 2);
+        
         return result;
     }
             
+    /**
+     * Retrieves an 32-bit unsigned integer from the array
+     * 
+     * Note: because a normal "int" in Java is a signed 32-bit value, the result
+     * has to be returned as a long
+     * 
+     * @param offset the position of the first byte in the array
+     * @return a value between 0 ... 2^32 - 1, according to the byte values
+     */
     public long getUint32(int offset)
     {
-        checkBoundary(offset, 4);
+        assertArrayBoundary(offset, 4);
         
-        int lw = getUint16(offset);
-        int hw = getUint16(offset + 2);
+        // construct the result from four (swapped) bytes
+        byte[] tmp = getSwappedSlice(offset, 4);
+        long result = (tmp[0] & 0xff);
+        result += (tmp[1] & 0xff) << 8;
+        result += (tmp[2] & 0xff) << 16;
+        result += (tmp[3] & 0xff) << 24;
         
-        return (long)hw * 65536 + lw;
+        return result;
     }
     
+    /**
+     * Retrieves an 32-bit signed integer from the array
+     * 
+     * @param offset the position of the first byte in the array
+     * @return a value between -2^31-1 ... 2^31, according to the byte values
+     */
     public int getSint32(int offset)
     {
-        checkBoundary(offset, 4);
+        assertArrayBoundary(offset, 4);
         
-        String lw = Integer.toBinaryString(getUint16(offset));
-        String hw = Integer.toBinaryString(getUint16(offset+2));
+        // get the raw, unsigend data, convert it into a bit string
+        // and read an integer from the bit string
+        long u = getUint32(offset);
+        String tmp = Long.toBinaryString(u);
         
-        return Integer.parseInt(hw+lw, 2);
+        return Integer.parseInt(tmp, 2);
     }
     
+    /**
+     * Get the number of bytes stored in the array
+     * 
+     * @return the array size in bytes
+     */
     public int length()
     {
         return data.length;
