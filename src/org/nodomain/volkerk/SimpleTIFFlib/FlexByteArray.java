@@ -101,7 +101,7 @@ public class FlexByteArray {
      * @param count the number of bytes to retrieve
      * @return count bytes from the array; if necessary in inversed order, depending on the swap status
      */
-    protected byte[] getSwappedSlice(int offset, int count)
+    public byte[] getSwappedSlice(int offset, int count)
     {
         assertArrayBoundary(offset, count);
         byte[] result = new byte[count];
@@ -158,7 +158,7 @@ public class FlexByteArray {
      * Retrieves an 8-bit signed integer from the array
      * 
      * @param offset the position of the byte in the array
-     * @return a value between -127...128, according to the byte value
+     * @return a value between -128...127, according to the byte value
      */
     public byte getSignedByte(int offset)
     {
@@ -187,7 +187,7 @@ public class FlexByteArray {
      * Retrieves an 16-bit signed integer from the array
      * 
      * @param offset the position of the first byte in the array
-     * @return a value between -32767...32768, according to the byte values
+     * @return a value between -32768...32767, according to the byte values
      */
     public int getSint16(int offset)
     {
@@ -231,18 +231,15 @@ public class FlexByteArray {
      * Retrieves an 32-bit signed integer from the array
      * 
      * @param offset the position of the first byte in the array
-     * @return a value between -2^31-1 ... 2^31, according to the byte values
+     * @return a value between -2^31 ... 2^31-1, according to the byte values
      */
     public int getSint32(int offset)
     {
         assertArrayBoundary(offset, 4);
         
-        // get the raw, unsigend data, convert it into a bit string
-        // and read an integer from the bit string
+        // get the raw, unsigend data, convert it into to in
         long u = getUint32(offset);
-        String tmp = Long.toBinaryString(u);
-        
-        return Integer.parseInt(tmp, 2);
+        return (int) u;
     }
     
     /**
