@@ -48,6 +48,22 @@ public class FlexByteArrayTest {
     }
     
     @Test
+    public void testSetUint32()
+    {
+        FlexByteArray a = getTestArray();
+        
+        // LSB case
+        a.setUint32(0, 0x23426677);
+        assertTrue(a.getUint32(0) == 0x23426677);
+        
+        // MSB case
+        a.setSwap(true);
+        assertTrue(a.getUint32(0) == 0x77664223);
+        a.setUint32(0, 0x23426677);
+        assertTrue(a.getUint32(0) == 0x23426677);
+    }
+    
+    @Test
     public void testWriteSlice()
     {
         FlexByteArray a = getTestArray();

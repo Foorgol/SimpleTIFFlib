@@ -232,6 +232,29 @@ public class FlexByteArray {
     }
             
     /**
+     * Stores an unsigned 32-bit value in the data block, taking the
+     * current byte order into account
+     * 
+     * @param offset 0-based index of the first byte
+     * @param newVal the 32-bit value to write
+     */
+    public void setUint32(int offset, long newVal)
+    {
+        // range-limit the new value
+        newVal &= 0xFFFFFFFF;
+        
+        // convert the int into a byte array with LSB first
+        byte[] buf = new byte[4];
+        buf[0] = (byte) (newVal % 256);
+        buf[1] = (byte) (newVal / (1 << 8));
+        buf[2] = (byte) (newVal / (1 << 16));
+        buf[3] = (byte) (newVal / (1 << 24));
+        
+        // write the data incl. a possible byte swap
+        writeSwappedSlice(buf, offset);
+    }
+    
+    /**
      * Retrieves an 16-bit signed integer from the array
      * 
      * @param offset the position of the first byte in the array
