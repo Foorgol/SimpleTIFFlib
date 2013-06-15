@@ -123,6 +123,33 @@ public class FlexByteArray {
     }
     
     /**
+     * Take an array of bytes in LSB order and writes it into the data block
+     * and swaps the byte sequence, if necessary
+     * 
+     * @param buf is the array with the LSB data
+     * @param offset is the 0-based start address for the write access
+     */
+    public void writeSwappedSlice(byte[] buf, int offset)
+    {
+        assertArrayBoundary(offset, buf.length);
+        
+        // copy the data incl. possible swapping
+        int count = buf.length;
+        
+        for (int n=0; n < count; n++)
+        {
+            if (swapBytes)
+            {
+                data[offset + count - n - 1] = buf[n];
+            }
+            else
+            {
+                data[offset + n] = buf[n];
+            }
+        }
+    }
+    
+    /**
      * Retrieves an 8-bit unsigned integer from the array
      * 
      * Note: a normal "byte" in java is a SIGNED 8-bit value (-127...128), thus we have to return the result as int (not byte) and apply the 2s-complement
@@ -181,6 +208,27 @@ public class FlexByteArray {
         
         // compute the 16-bit value
         return (tmp[0] & 0xff) + (tmp[1] & 0xff) *256;
+    }
+    
+    /**
+     * Stores an unsigned 16-bit value in the data block, taking the
+     * current byte order into account
+     * 
+     * @param offset 0-based index of the first byte
+     * @param newVal the 16-bit value to write
+     */
+    public void setUint16(int offset, int newVal)
+    {
+        // range-limit the new value
+        newVal &= 0xFFFF;
+        
+        // convert the int into a byte array with LSB first
+        byte[] buf = new byte[2];
+        buf[0] = (byte) (newVal % 256);
+        buf[1] = (byte) (newVal / 256);
+        
+        // write the data incl. a possible byte swap
+        writeSwappedSlice(buf, offset);
     }
             
     /**

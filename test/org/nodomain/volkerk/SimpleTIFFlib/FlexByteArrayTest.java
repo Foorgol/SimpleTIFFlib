@@ -32,6 +32,47 @@ public class FlexByteArrayTest {
     }
     
     @Test
+    public void testSetUnit16()
+    {
+        FlexByteArray a = getTestArray();
+        
+        // LSB case
+        a.setUint16(0, 0x2342);
+        assertTrue(a.getUint16(0) == 0x2342);
+        
+        // MSB case
+        a.setSwap(true);
+        assertTrue(a.getUint16(0) == 0x4223);
+        a.setUint16(0, 0x2342);
+        assertTrue(a.getUint16(0) == 0x2342);
+    }
+    
+    @Test
+    public void testWriteSlice()
+    {
+        FlexByteArray a = getTestArray();
+        byte[] buf = new byte[3];
+        buf[0] = 0x20;
+        buf[1] = 0x21;
+        buf[2] = 0x22;
+        
+        // Default: LSB
+        a.writeSwappedSlice(buf, 7);
+        assertTrue(a.getUint32(6) == 0x222120FD);
+        a.writeSwappedSlice(buf, 0);
+        assertTrue(a.getUint32(0) == 0x04222120);
+        
+        // MSB
+        a = getTestArray();
+        a.setSwap(true);
+        a.writeSwappedSlice(buf, 7);
+        assertTrue(a.getUint32(6) == 0xFD222120);
+        a.writeSwappedSlice(buf, 0);
+        assertTrue(a.getUint32(0) == 0x22212004);
+        
+    }
+    
+    @Test
     public void testGetSwappedSlice() {
         FlexByteArray a = getTestArray();
         
