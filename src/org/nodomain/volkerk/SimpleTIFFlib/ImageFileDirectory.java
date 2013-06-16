@@ -48,7 +48,7 @@ public class ImageFileDirectory {
     protected int cfaPatternRows;
     
     /**
-     * The column filter array pattern. Has patternCols x patternRows entries
+     * The color filter array pattern. Has patternCols x patternRows entries
      */
     protected int[] cfaPattern;
     
@@ -568,7 +568,7 @@ public class ImageFileDirectory {
     /**
      * Converts an array of longs to a string with comma-separated values for beautiful logging
      * 
-     * @param intArray the array with the longs for conversion
+     * @param longArray the array with the longs for conversion
      * 
      * @return a string with comma-separated longs
      */
