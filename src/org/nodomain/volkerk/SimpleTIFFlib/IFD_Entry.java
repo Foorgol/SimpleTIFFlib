@@ -169,7 +169,7 @@ public class IFD_Entry {
     }
     
     /**
-     * Retrieves the n-th value of the entry, if the value can be expressed as an int
+     * Retrieves the n-th value of the entry, if the value can be expressed as an java int
      * 
      * @param inEntryValue if set to true, the value is read from the entry data block; if false, the "value"-section of the entry is interpreted as pointer to the actual data
      * @param cnt the 0-based index of the value to receive
@@ -291,7 +291,7 @@ public class IFD_Entry {
         
         if (type == ENTRY_TYPE.RATIONAL)
         {
-            // a RATIONAL entry need 8 bytes, therefore it is always stored outside the entry
+            // a RATIONAL entry needs 8 bytes, therefore it is always stored outside the entry
             ptr = (int) getLong() + cnt*8;
             long numerator = data.getUint32(ptr);
             long denom = data.getUint32(ptr + 4);
@@ -299,7 +299,7 @@ public class IFD_Entry {
             return ((double) numerator) / ((double) denom);
         }
         
-        return -1; // we should never reach this
+        return -1; // we should never reach this point
     }
     
     /**
