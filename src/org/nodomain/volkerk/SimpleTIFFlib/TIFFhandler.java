@@ -97,7 +97,7 @@ public class TIFFhandler {
      */
     protected void initDirectories(int firstDirectoryOffset)
     {
-        ifdList = new ArrayList<>();
+        ifdList = new ArrayList();
         
         int nextOffset = firstDirectoryOffset;
         while (nextOffset != 0)

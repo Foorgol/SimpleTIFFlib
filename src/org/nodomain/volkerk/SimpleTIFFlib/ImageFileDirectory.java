@@ -86,7 +86,7 @@ public class ImageFileDirectory {
         
         // prepare an empty hashmap for the directory entries
         // and read the number of entries from the first two bytes in the data block
-        entries = new HashMap<>();
+        entries = new HashMap();
         int entryCount = (int) data.getUint16(offset);
         
         // read all entries; they follow in 12-byte-block after the first two bytes
