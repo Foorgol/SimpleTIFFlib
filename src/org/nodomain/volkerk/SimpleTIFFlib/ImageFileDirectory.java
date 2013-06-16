@@ -506,7 +506,6 @@ public class ImageFileDirectory {
         System.err.println("Date and time: " + datetime());
         System.err.println("CFA repeat pattern dimension: " + arrayToString(cfaPatternDim()));
         System.err.println("CFA pattern: " + arrayToString(cfaPatternGet()));
-        System.err.println("CFA bits per pixel: " + CFA_getBitsPerPixel());
     }
     
     /**
@@ -541,16 +540,6 @@ public class ImageFileDirectory {
             result += i + ", ";
         }
         return result.substring(0, result.length()-2);
-    }
-    
-    public int CFA_getBitsPerPixel()
-    {
-        // Calculate the number of bits in the first stripe and
-        // divide that by the number of pixels in the first strip
-        long numBits = stripByteCounts()[0] * 8;
-        long pixelPerStrip = imgWidth() * RowsPerStrip();
-        
-        return (int)(numBits/pixelPerStrip);  // integer division; rounding down to account for padding bits
     }
     
     /**
@@ -635,7 +624,7 @@ public class ImageFileDirectory {
     {
         int w = (int) imgWidth();
         int h = (int) imgLen();
-        int bpp = CFA_getBitsPerPixel();
+        int bpp = bitsPerSample()[0];
         
         if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
         {
@@ -791,7 +780,7 @@ public class ImageFileDirectory {
         
         int[][] result = new int[w][h];
         
-        int bpp = CFA_getBitsPerPixel();
+        int bpp = bitsPerSample()[0];
         int row = 0;
         
         for (int n=0; n < stripsPerImage(); n++)
@@ -850,9 +839,10 @@ public class ImageFileDirectory {
         int[][] rawData = CFA_getPixelData();
         
         // convert to 8-bit color depth, if necessary
-        if (CFA_getBitsPerPixel() > 8)
+        int bpp = bitsPerSample()[0];
+        if (bpp > 8)
         {
-            int bitDiff = CFA_getBitsPerPixel() - 8;
+            int bitDiff = bpp - 8;
             
             for (int y=0; y < imgLen(); y++)
             {
