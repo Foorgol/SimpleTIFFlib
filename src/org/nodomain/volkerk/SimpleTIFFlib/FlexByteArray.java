@@ -246,9 +246,9 @@ public class FlexByteArray {
         // convert the int into a byte array with LSB first
         byte[] buf = new byte[4];
         buf[0] = (byte) (newVal % 256);
-        buf[1] = (byte) (newVal / (1 << 8));
-        buf[2] = (byte) (newVal / (1 << 16));
-        buf[3] = (byte) (newVal / (1 << 24));
+        buf[1] = (byte) ((newVal >> 8) & 0xff);
+        buf[2] = (byte) ((newVal >> 16) & 0xff);
+        buf[3] = (byte) ((newVal >> 24) & 0xff);
         
         // write the data incl. a possible byte swap
         writeSwappedSlice(buf, offset);

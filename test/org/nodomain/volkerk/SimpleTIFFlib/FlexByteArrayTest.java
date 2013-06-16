@@ -37,14 +37,14 @@ public class FlexByteArrayTest {
         FlexByteArray a = getTestArray();
         
         // LSB case
-        a.setUint16(0, 0x2342);
-        assertTrue(a.getUint16(0) == 0x2342);
+        a.setUint16(0, 0xF342);
+        assertTrue(a.getUint16(0) == 0xF342);
         
         // MSB case
         a.setSwap(true);
-        assertTrue(a.getUint16(0) == 0x4223);
-        a.setUint16(0, 0x2342);
-        assertTrue(a.getUint16(0) == 0x2342);
+        assertTrue(a.getUint16(0) == 0x42F3);
+        a.setUint16(0, 0xF342);
+        assertTrue(a.getUint16(0) == 0xF342);
     }
     
     @Test
@@ -53,14 +53,14 @@ public class FlexByteArrayTest {
         FlexByteArray a = getTestArray();
         
         // LSB case
-        a.setUint32(0, 0x23426677);
-        assertTrue(a.getUint32(0) == 0x23426677);
+        a.setUint32(0, 0xF3426677);
+        assertTrue(a.getUint32(0) == 0xF3426677);
         
         // MSB case
         a.setSwap(true);
-        assertTrue(a.getUint32(0) == 0x77664223);
-        a.setUint32(0, 0x23426677);
-        assertTrue(a.getUint32(0) == 0x23426677);
+        assertTrue(a.getUint32(0) == 0x776642F3);
+        a.setUint32(0, 0xF3426677);
+        assertTrue(a.getUint32(0) == 0xF3426677);
     }
     
     @Test
