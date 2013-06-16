@@ -63,4 +63,22 @@ public class ImageFileDirectoryTest extends TstBaseClass {
         assertTrue(ifd1.cfaPatternDim().length == 2); // not a CFA image
 
     }
+    
+    @Test
+    public void testSubDir() throws IOException
+    {
+        // use a test file with a-priori known offsets for the IFDs
+        byte[] allBytes = Files.readAllBytes(Paths.get(testInputDataDir(), "000000.dng"));
+        FlexByteArray a = new FlexByteArray(allBytes);
+        ImageFileDirectory ifd1 = new ImageFileDirectory(a, 8);    // main IFD
+        
+        assertTrue(ifd1.hasSubDirs());
+        assertTrue(ifd1.getSubIFDs().length == 1);
+        ImageFileDirectory ifd2 = ifd1.getSubIFDs()[0];
+        assert(ifd2.imgWidth() == 1280);
+        assert(ifd2.imgLen() == 720);
+        assertFalse(ifd2.hasSubDirs());
+        assertNull(ifd2.getSubIFDs());
+        
+    }
 }

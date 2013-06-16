@@ -112,6 +112,46 @@ public class ImageFileDirectory {
     }
     
     /**
+     * Checks whether this IFD has Sub-IFDs
+     * 
+     * @return true if subIFDs exist
+     */
+    public boolean hasSubDirs()
+    {
+        if (!(hasTag(TIFF_TAG.SUB_IFDs))) return false;
+        IFD_Entry e = getEntry(TIFF_TAG.SUB_IFDs);
+
+        if (e.getNumVal() < 1) return false;
+        
+        return true;
+    }
+    
+    /**
+     * Creates IFD instances for all sub-directories and returns an array of
+     * these instances
+     * 
+     * @return array of ImageFileDirectories or null if there are no subDirs
+     */
+    public ImageFileDirectory[] getSubIFDs()
+    {
+        if (!(hasSubDirs())) return null;
+        IFD_Entry e = getEntry(TIFF_TAG.SUB_IFDs);
+        
+        int numSubs = e.getNumVal();
+        ImageFileDirectory[] result = new ImageFileDirectory[numSubs];
+        
+        int cnt = 0;
+        for (long ptr : e.getLongArray())
+        {
+            result[cnt] = new ImageFileDirectory(data, (int) ptr, this);
+            cnt++;
+        }
+        
+        return result;
+    }
+    
+    
+    /**
      * Checks whether an entry with a specific ID exists in the directory or not
      * 
      * @param t the tag / ID of the entry

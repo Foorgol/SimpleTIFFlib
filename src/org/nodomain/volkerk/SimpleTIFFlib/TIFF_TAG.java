@@ -5,8 +5,7 @@
 package org.nodomain.volkerk.SimpleTIFFlib;
 
 /**
- *
- * @author volker
+ * A class with constants from the TIFF-specification
  */
 public class TIFF_TAG {
     

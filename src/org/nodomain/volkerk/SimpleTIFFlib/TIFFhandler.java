@@ -42,7 +42,8 @@ public class TIFFhandler {
     }
     
     /**
-     * Constructor. Takes the input file name and reads all bytes into an array
+     * Constructor. Takes the input file name and reads all bytes into an array.
+     * Checks the magic bytes of a TIFF file and initializes the IFDs
      * 
      * @param fPath Path-object for the input file
      * @throws IOException 
@@ -63,24 +64,29 @@ public class TIFFhandler {
         int firstTwoBytes = fData.getUint16(0);
         if (firstTwoBytes == 0x4949)
         {
-            //System.err.println("Found little endian tag in header.");
-            fData.setSwap(false);
+            fData.setSwap(false);  // 0x4949 indicates little endian
         }
         else if (firstTwoBytes == 0x4d4d)
         {
-            //System.err.println("Found big endian tag in header. Swapping byte order!");
-            fData.setSwap(true);
+            fData.setSwap(true); // 0x4d4d indicates big endian
         }
         else throw new IllegalArgumentException("First two bytes in file invalid!");
         
         if (fData.getUint16(2) != 42) throw new IllegalArgumentException("Missing 42-tag in header!");
         
         // if we've reached this point, we can be pretty sure to have a valid TIFF file
-        int firstDirOffset = (int) fData.getUint32(4);
-        //System.err.println("First IFD at offset " + firstDirOffset);
+        
+        // get a pointer to the first IFD and read all IFDs
+        int firstDirOffset = (int) fData.getUint32(4);        
         initDirectories(firstDirOffset);
     }
     
+    /**
+     * Create a flat list of all (sub-)IFDs in the file. The list is stored
+     * in the member variable ifdList, which is reset in this function
+     * 
+     * @param firstDirectoryOffset the index of the first byte of the first IFD in the file
+     */
     protected void initDirectories(int firstDirectoryOffset)
     {
         ifdList = new ArrayList<>();
@@ -93,23 +99,20 @@ public class TIFFhandler {
             
             nextOffset = (int) d.getNextDirectoryOffset();
             
-            // Some debug data
-            //d.dumpInfo();
-            
-            // Sub-IFD?
-            if (d.hasTag(TIFF_TAG.SUB_IFDs))
+            // Sub-IFD? If yes, add them to the list. Assumption:
+            // only one level of sub-dirs, so that we don't need to search recursively
+            if (d.hasSubDirs())
             {
-                IFD_Entry e = d.getEntry(TIFF_TAG.SUB_IFDs);
-                if (e.getNumVal() == 1)
-                {
-                    ImageFileDirectory subDir = new ImageFileDirectory(fData, (int)e.getLong(), d);
-                    //subDir.dumpInfo();
-                    ifdList.add(subDir);
-                }
+                for (ImageFileDirectory sub : d.getSubIFDs()) ifdList.add(sub);
             }
         }
     }
     
+    /**
+     * Takes the first raw image in the file and dumps it into a PNG file
+     * 
+     * @param destFileName name of the file to write the PNG to
+     */
     public void dumpRawToPng(String destFileName)
     {
         ImageFileDirectory ifd = getFirstIFDwithCFA();
@@ -117,6 +120,11 @@ public class TIFFhandler {
         else System.err.println("dumpRawToPng: no RAW data found in image!");
     }
     
+    /**
+     * Returns the IFD-object for the first image with RAW data or null
+     * 
+     * @return the IFD-object for the first image with RAW data or null
+     */
     public ImageFileDirectory getFirstIFDwithCFA()
     {
         for (ImageFileDirectory ifd : ifdList)
@@ -127,6 +135,11 @@ public class TIFFhandler {
         return null;
     }
     
+    /**
+     * Takes the first raw image in the file and demosaics it into a PNG file
+     * 
+     * @param destFileName name of the file to write the PNG to
+     */
     public void primitiveDemosaic(String destFileName)
     {
         ImageFileDirectory ifd = getFirstIFDwithCFA();
@@ -134,11 +147,21 @@ public class TIFFhandler {
         else System.err.println("dumpRawToPng: no RAW data found in image!");
     }
     
+    /**
+     * Write the whole TIFF data to a file. Existing files will be overwritten
+     * 
+     * @param dstPath Path-instance pointing to the file to write to
+     */
     public void saveAs(Path dstPath)
     {
         saveAs(dstPath.toString());
     }
     
+    /**
+     * Write the whole TIFF data to a file. Existing files will be overwritten
+     * 
+     * @param fname name of the file to write to
+     */
     public void saveAs(String fname)
     {
         fData.dumpToFile(fname);
