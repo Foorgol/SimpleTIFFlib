@@ -42,6 +42,10 @@ public class TIFF_TAG {
     public static final int CFA_REPEAT_PATTERN_DIM = 0x828D;
     public static final int CFA_PATTERN = 0x828E;
     
+    public static final int DNG_ACTIVE_AREA = 0xC68D;
+    public static final int DNG_DEFAULT_CROP_ORIGIN = 0xC61F;
+    public static final int DNG_DEFAULT_CROP_SIZE = 0xC620;
+    
 //----------------------------------------------------------------------------		
     
     public static final int PHOTO_INTERPRETATION_GRAY = 1;

@@ -531,10 +531,93 @@ public class ImageFileDirectory {
     }
     
     /**
+     * The DNG-tag "Active Area" which denotes the actually used part of the image / sensor
+     * 
+     * @return x0, y0, x1, y1 coordinates of the active image area
+     */
+    public long[] DNG_ActiveArea()
+    {
+        // Default: the whole image is the active area
+        if (!(hasTag(TIFF_TAG.DNG_ACTIVE_AREA))) return new long[] {0, 0, imgWidth(), imgLen()};
+        
+        IFD_Entry e = getEntry(TIFF_TAG.DNG_ACTIVE_AREA);
+        long[] tmpLong = null;
+        
+        // the active area might be stored as long or short
+        // we always return long, so we need to copy between the arrays manually
+        if (e.type == IFD_Entry.ENTRY_TYPE.SHORT)
+        {
+            int[] tmpInt = e.getIntArray();
+            for (int i=0; i<4; i++) tmpLong[i] = tmpInt[i];
+        }
+        else tmpLong = e.getLongArray();
+        
+        // the IFD entry reports y-coordinates first; we want to change that
+        return new long[] {tmpLong[1], tmpLong[0], tmpLong[3], tmpLong[2]};
+    }
+    
+    /**
+     * The DNG-tag "Default Crop Origin" which denotes the top left coordinate of a crop window within the active area
+     * 
+     * @return x, y coordinates of the top-left corner of the crop window; coordinates are relative to the active area
+     */
+    public long[] DNG_DefaultCropOrigin()
+    {
+        // Default: no cropping
+        if (!(hasTag(TIFF_TAG.DNG_DEFAULT_CROP_ORIGIN))) return new long[] {0, 0};
+        
+        IFD_Entry e = getEntry(TIFF_TAG.DNG_DEFAULT_CROP_ORIGIN);
+        
+        // values stores as LONG: direct return
+        if (e.type == IFD_Entry.ENTRY_TYPE.LONG) return e.getLongArray();
+        
+        // values stored in SHORT: copy manually to long
+        long[] tmpLong = null;        
+        if (e.type == IFD_Entry.ENTRY_TYPE.SHORT)
+        {
+            int[] tmpInt = e.getIntArray();
+            for (int i=0; i<2; i++) tmpLong[i] = tmpInt[i];
+            return tmpLong;
+        }
+        
+        // values stored as RATIONAL: not yet supported
+        return new long[] {0, 0};
+    }
+    
+    /**
+     * The DNG-tag "Default Crop Size" which denotes the size of a crop window within the active area
+     * 
+     * @return width, height of the crop window
+     */
+    public long[] DNG_DefaultCropSize()
+    {
+        // Default: no cropping
+        if (!(hasTag(TIFF_TAG.DNG_DEFAULT_CROP_SIZE))) return new long[] {imgWidth(), imgLen()};
+        
+        IFD_Entry e = getEntry(TIFF_TAG.DNG_DEFAULT_CROP_SIZE);
+        
+        // values stores as LONG: direct return
+        if (e.type == IFD_Entry.ENTRY_TYPE.LONG) return e.getLongArray();
+        
+        // values stored in SHORT: copy manually to long
+        long[] tmpLong = null;        
+        if (e.type == IFD_Entry.ENTRY_TYPE.SHORT)
+        {
+            int[] tmpInt = e.getIntArray();
+            for (int i=0; i<2; i++) tmpLong[i] = tmpInt[i];
+            return tmpLong;
+        }
+        
+        // values stored as RATIONAL: not yet supported
+        return new long[] {imgWidth(), imgLen()};
+    }
+    
+    /**
      * Print some info about this image to stderr
      */
     public void dumpInfo()
     {
+        System.err.println("--------------------- TIFF tags ---------------------");
         System.err.println("Image size: " + imgWidth() + " x " + imgLen());
         System.err.println("Image is compressed: " + isCompressed());
         System.err.println("Samples per pixel: " + samplesPerPixel());
@@ -554,6 +637,10 @@ public class ImageFileDirectory {
         System.err.println("Date and time: " + datetime());
         System.err.println("CFA repeat pattern dimension: " + arrayToString(cfaPatternDim()));
         System.err.println("CFA pattern: " + arrayToString(cfaPatternGet()));
+        System.err.println("--------------------- DNG tags ---------------------");
+        System.err.println("Active area: " + arrayToString(DNG_ActiveArea()));
+        System.err.println("Default crop origin: " + arrayToString(DNG_DefaultCropOrigin()));
+        System.err.println("Default crop size: " + arrayToString(DNG_DefaultCropSize()));
     }
     
     /**
