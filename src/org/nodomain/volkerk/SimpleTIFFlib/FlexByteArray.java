@@ -16,11 +16,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.nodomain.volkerk.LoggingLib.LoggingClass;
 
 /**
  * A class for flexible access to an array of bytes
  */
-public class FlexByteArray {
+public class FlexByteArray extends LoggingClass {
     
     /**
      * The data which is maintained by this class
@@ -51,14 +52,21 @@ public class FlexByteArray {
      */
     public void dumpToFile(String fName)
     {
+        preLog(LVL_DEBUG, "Trying to instanciate Path for ", fName);
         Path p = Paths.get(fName);
+        if (p == null) resultLog((LOG_FAIL));
+        else resultLog(LOG_OK);
 
         try
         {
+            preLog(LVL_DEBUG, "Calling Files.write()");
             Files.write(p, data);
+            resultLog(LOG_OK);
         }
         catch (IOException ex)
         {
+            resultLog(LOG_FAIL);
+            dbg("Exception while writing to the disk: ", ex.getMessage());
             throw new IllegalArgumentException("Could not write to file: " + ex.getMessage());
         }
     }

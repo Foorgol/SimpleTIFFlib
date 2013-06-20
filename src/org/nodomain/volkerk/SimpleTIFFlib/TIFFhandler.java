@@ -15,12 +15,13 @@ package org.nodomain.volkerk.SimpleTIFFlib;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
+import org.nodomain.volkerk.LoggingLib.LoggingClass;
 
 /**
  *
  * @author volker
  */
-public class TIFFhandler {
+public class TIFFhandler extends LoggingClass {
     protected static final int MIN_FILE_SIZE = 20;
     
     /**
@@ -58,13 +59,22 @@ public class TIFFhandler {
      */
     public TIFFhandler(Path fPath) throws IOException
     {
+        dbg("Constructor called with Path arg ", fPath);
         inFilePath = fPath;
         
-        fData = new FlexByteArray(Files.readAllBytes(inFilePath));
+        preLog(LVL_DEBUG, "Calling readAllBytes with Path arg");
+        byte[] dat = Files.readAllBytes(inFilePath);
+        if (dat != null) resultLog(LOG_OK);
+        else resultLog(LOG_FAIL);
+        
+        logPush("Instanciating FlexByteArray");
+        fData = new FlexByteArray(dat);
+        logPop("Done");
         
         // check some parameters
         if (fData.length() < MIN_FILE_SIZE)
         {
+            failed("File too small");
             throw new IllegalArgumentException(fPath.toString() + " is not a TIFF file");
         }
         
@@ -72,10 +82,12 @@ public class TIFFhandler {
         int firstTwoBytes = fData.getUint16(0);
         if (firstTwoBytes == 0x4949)
         {
+            dbg("This is a little endian TIFF file");
             fData.setSwap(false);  // 0x4949 indicates little endian
         }
         else if (firstTwoBytes == 0x4d4d)
         {
+            dbg("This is a  big endian TIFF file");
             fData.setSwap(true); // 0x4d4d indicates big endian
         }
         else throw new IllegalArgumentException("First two bytes in file invalid!");
@@ -83,10 +95,15 @@ public class TIFFhandler {
         if (fData.getUint16(2) != 42) throw new IllegalArgumentException("Missing 42-tag in header!");
         
         // if we've reached this point, we can be pretty sure to have a valid TIFF file
+        dbg("Found valid TIFF header");
         
         // get a pointer to the first IFD and read all IFDs
-        int firstDirOffset = (int) fData.getUint32(4);        
+        int firstDirOffset = (int) fData.getUint32(4);  
+        
+        logPush("Calling initDirectories");
         initDirectories(firstDirOffset);
+        logPop("Done");
+        dbg(ifdList.size(), " directories found in file");
     }
     
     /**
@@ -162,7 +179,9 @@ public class TIFFhandler {
      */
     public void saveAs(Path dstPath)
     {
+        logPush("Calling saveAs with string argument ", dstPath.toString());
         saveAs(dstPath.toString());
+        logPop("Done");
     }
     
     /**
@@ -172,7 +191,9 @@ public class TIFFhandler {
      */
     public void saveAs(String fname)
     {
+        logPush("Calling FlexData.dumpToFile with string argument ", fname);
         fData.dumpToFile(fname);
+        logPop("Done");
     }
     
 }
