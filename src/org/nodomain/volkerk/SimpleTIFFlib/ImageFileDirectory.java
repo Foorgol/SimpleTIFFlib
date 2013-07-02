@@ -61,6 +61,11 @@ public class ImageFileDirectory {
     protected int[] cfaPattern;
     
     /**
+     * Stores the Bits-Per-Sample value, because it's often used
+     */
+    protected int[] bps;
+    
+    /**
      * Constructor for a "root"-IFD without parent
      * 
      * @param _data the TIFF file as FlexByteArray
@@ -107,6 +112,9 @@ public class ImageFileDirectory {
             cfaPatternRows = cfaPatternDim()[1];
             cfaPattern = cfaPatternGet();
         }
+        
+        // store the bits-per-pixel... it's often used
+        bps = bitsPerSample();
     }
     
     /**
@@ -268,7 +276,7 @@ public class ImageFileDirectory {
      */
     public String bitsPerSampleStr()
     {
-        return arrayToString(bitsPerSample());
+        return arrayToString(bps);
     }
     
     /**
@@ -771,7 +779,7 @@ public class ImageFileDirectory {
     {
         int w = (int) imgWidth();
         int h = (int) imgLen();
-        int bpp = bitsPerSample()[0];
+        int bpp = bps[0];
         
         if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
         {
@@ -927,7 +935,7 @@ public class ImageFileDirectory {
         
         int[][] result = new int[w][h];
         
-        int bpp = bitsPerSample()[0];
+        int bpp = bps[0];
         int row = 0;
         
         for (int n=0; n < stripsPerImage(); n++)
@@ -986,7 +994,7 @@ public class ImageFileDirectory {
         int[][] rawData = CFA_getPixelData();
         
         // convert to 8-bit color depth, if necessary
-        int bpp = bitsPerSample()[0];
+        int bpp = bps[0];
         if (bpp > 8)
         {
             int bitDiff = bpp - 8;
