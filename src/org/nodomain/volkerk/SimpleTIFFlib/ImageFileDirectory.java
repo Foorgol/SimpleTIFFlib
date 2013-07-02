@@ -541,7 +541,7 @@ public class ImageFileDirectory {
         if (!(hasTag(TIFF_TAG.DNG_ACTIVE_AREA))) return new long[] {0, 0, imgWidth(), imgLen()};
         
         IFD_Entry e = getEntry(TIFF_TAG.DNG_ACTIVE_AREA);
-        long[] tmpLong = null;
+        long[] tmpLong = new long[] {0, 0, 0, 0};
         
         // the active area might be stored as long or short
         // we always return long, so we need to copy between the arrays manually
@@ -572,16 +572,15 @@ public class ImageFileDirectory {
         if (e.type == IFD_Entry.ENTRY_TYPE.LONG) return e.getLongArray();
         
         // values stored in SHORT: copy manually to long
-        long[] tmpLong = null;        
+        long[] tmpLong = new long[] {0, 0};
         if (e.type == IFD_Entry.ENTRY_TYPE.SHORT)
         {
             int[] tmpInt = e.getIntArray();
             for (int i=0; i<2; i++) tmpLong[i] = tmpInt[i];
-            return tmpLong;
         }
         
         // values stored as RATIONAL: not yet supported
-        return new long[] {0, 0};
+        return tmpLong;
     }
     
     /**
@@ -600,7 +599,7 @@ public class ImageFileDirectory {
         if (e.type == IFD_Entry.ENTRY_TYPE.LONG) return e.getLongArray();
         
         // values stored in SHORT: copy manually to long
-        long[] tmpLong = null;        
+        long[] tmpLong = new long[] {0, 0};        
         if (e.type == IFD_Entry.ENTRY_TYPE.SHORT)
         {
             int[] tmpInt = e.getIntArray();
