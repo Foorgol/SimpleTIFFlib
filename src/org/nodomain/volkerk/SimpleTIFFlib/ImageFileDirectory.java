@@ -779,12 +779,61 @@ public class ImageFileDirectory {
     {
         int w = (int) imgWidth();
         int h = (int) imgLen();
-        int bpp = bps[0];
-        
+
         if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
         {
             throw new IllegalArgumentException("Invalid coordinates: " + x + ", " + y);
         }
+        
+        // If we have multiple pixels in one byte (color depth unequal 8, 16
+        // or 32), we need a special method to puzzle the bits for one pixel together
+        int bpp = bps[0];
+        if (((bpp % 8) != 0) || (bpp == 24)) return CFA_setPixel_BitPuzzle(x, y, newVal);
+        
+        // calculate the strip base address
+        int stripNum = y / (int) RowsPerStrip();
+        int ptr = (int) stripOffsets()[stripNum];
+        int bytesPerPixel = bpp / 8;
+        
+        // calculate the offset of the row within the strip
+        // use the ceil()-function to account for the byte-padding at the end of each row
+        ptr += (y % (int) RowsPerStrip()) * w * bytesPerPixel;
+        
+        // find the base address of the pixel
+        ptr += x * bytesPerPixel;
+        
+        // is it only a getPixel-call?
+        if (newVal < 0)
+        {
+            if (bytesPerPixel == 1) return data.getByte(ptr);
+            else if (bytesPerPixel == 2) return data.getUint16(ptr);
+            return (int) (data.getUint32(ptr));  // Will fail for 32 bpp, because Uint32 does fit into int
+        }
+        
+        if (bytesPerPixel == 1) data.setByte(ptr, newVal);
+        else if (bytesPerPixel == 2) data.setUint16(ptr, newVal);
+        else data.setUint32(ptr, newVal);  // will fail for 32 bpp
+        
+        return newVal;
+    }
+    
+    /**
+     * Gets or sets the intensity value of a pixel in an CFA image
+     * Works only for CFA-images stored in strips.
+     * 
+     * Designed for bits per pixel != 8, 16 or 32
+     * 
+     * @param x the 0-based x-coordinate of the pixel
+     * @param y the 0-based y-coordinate of the pixel
+     * @param newVal the new intensity value for the pixel; set to -1 to return the current value
+     * 
+     * @return the intensity of the pixel as int, if newVal=-1
+     */
+    protected int CFA_setPixel_BitPuzzle(int x, int y, int newVal)
+    {
+        int w = (int) imgWidth();
+        int h = (int) imgLen();
+        int bpp = bps[0];
         
         // calculate the strip base address
         int stripNum = y / (int) RowsPerStrip();
@@ -847,9 +896,6 @@ public class ImageFileDirectory {
             int b = Integer.parseInt(allBits.substring(i*8, (i+1)*8), 2);
             data.setByte(ptr + i, b);
         }
-        
-        // check for debugging
-        //assert (CFA_getPixel(x, y) == newVal);
         
         return newVal;
     }
@@ -920,15 +966,80 @@ public class ImageFileDirectory {
         }
     }
     
+    
     /**
      * Returns the CFA image data into an 2-dim array of ints,
      * which each int representing the intensity of one pixel
+     * 
+     * Designed for images with bits-per-sample == 8 or 16
+     * 
+     * Will also be executed for bpp == 32, but will finally fail, because
+     * 32 bpp does not fit into an int array as return value
      * 
      * Works only for CFA-images stored in strips.
      * 
      * @return a 2-dim int array with color intensities for each pixel in the image
      */
     public int[][] CFA_getPixelData()
+    {
+        int bpp = bps[0];
+        
+        // If we have multiple pixels in one byte (color depth unequal 8, 16
+        // or 32), we need a special method to puzzle the bits for one pixel together
+        if (((bpp % 8) != 0) || (bpp == 24)) return CFA_getPixelData_BitPuzzle();
+        
+        int w = (int) imgWidth();
+        int h = (int) imgLen();
+        
+        int[][] result = new int[w][h];
+        
+        int bytesPerSample = bpp / 8;
+        
+        int row = 0;
+        
+        for (int n=0; n < stripsPerImage(); n++)
+        {
+            int ptr = (int) stripOffsets()[n];
+            int x = 0;
+            int cnt = 0;
+            
+            while ((cnt * bytesPerSample) < stripByteCounts()[n])
+            {
+                // IMPORTANT NOTE: THIS WILL FAIL FOR 32 bpp
+                int newPixelValue;
+                
+                if (bytesPerSample == 1) newPixelValue = data.getByte(ptr + cnt);
+                else if (bytesPerSample == 2) newPixelValue = data.getUint16(ptr + 2*cnt);
+                else newPixelValue = (int) data.getUint32(ptr + cnt*4);  // THIS WILL FAIL FOR 32 BPP!!
+                
+                cnt++; // next pixel
+                
+                result[x][row] = newPixelValue;
+
+                // start a new row, if necessary
+                x++;
+                if (x >= w)
+                {
+                    x = 0;
+                    row++;
+                }
+                    
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * Returns the CFA image data into an 2-dim array of ints,
+     * which each int representing the intensity of one pixel
+     * 
+     * Designed for images with bits-per-sample != 8, 16, 32
+     * 
+     * Works only for CFA-images stored in strips.
+     * 
+     * @return a 2-dim int array with color intensities for each pixel in the image
+     */
+    protected int[][] CFA_getPixelData_BitPuzzle()
     {
         int w = (int) imgWidth();
         int h = (int) imgLen();
