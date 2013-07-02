@@ -612,6 +612,18 @@ public class ImageFileDirectory {
     }
     
     /**
+     * The TIIF tag "Default Fill Order" which denotes the sequence in which bits are stored in bytes
+     * 
+     * @return 1 (pixels with lower column values are stored in the higher-order bits of the byte) or 2 (pixels with lower column values are stored in the lower-order bits of the byte)
+     */
+    public int fillOrder()
+    {
+        if (!(hasTag(TIFF_TAG.FILLORDER))) return 1; // Default value according to spec
+        IFD_Entry e = getEntry(TIFF_TAG.FILLORDER);
+        return e.getInt();
+    }
+    
+    /**
      * Print some info about this image to stderr
      */
     public void dumpInfo()
@@ -621,6 +633,7 @@ public class ImageFileDirectory {
         System.err.println("Image is compressed: " + isCompressed());
         System.err.println("Samples per pixel: " + samplesPerPixel());
         System.err.println("Bits per sample: " + bitsPerSampleStr());
+        System.err.println("Fill order: " + fillOrder());
         System.err.println("Photometric Interpretation: " + photometricInterpretationStr());
         System.err.println("Make: " + make());
         System.err.println("Model: " + model());

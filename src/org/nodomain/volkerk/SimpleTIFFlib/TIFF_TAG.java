@@ -38,6 +38,7 @@ public class TIFF_TAG {
     public static final int SOFTWARE = 0x0131;
     public static final int DATETIME = 0x0132;
     public static final int SUB_IFDs = 0x014A;
+    public static final int FILLORDER = 0x010A;
     
     public static final int CFA_REPEAT_PATTERN_DIM = 0x828D;
     public static final int CFA_PATTERN = 0x828E;

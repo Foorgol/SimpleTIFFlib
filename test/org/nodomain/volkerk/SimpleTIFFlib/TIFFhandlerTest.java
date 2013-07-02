@@ -21,9 +21,11 @@ public class TIFFhandlerTest extends TstBaseClass {
     public void testConstructor() throws IOException
     {
         TIFFhandler h = new TIFFhandler(Paths.get(testInputDataDir(), "M26-1615_00000.dng"));
+        //TIFFhandler h = new TIFFhandler(Paths.get(testInputDataDir(), "000000.dng"));
         ImageFileDirectory ifd = h.getFirstIFDwithCFA();
         ifd.dumpInfo();
-        ifd.CFA_raw2png("/tmp/tst.png", false);
+        ifd.CFA_raw2png("/tmp/tst.png", true);
+        System.err.println(Integer.parseInt("10000000", 2));
         fail();
     }
 }
