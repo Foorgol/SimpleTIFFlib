@@ -847,56 +847,57 @@ public class ImageFileDirectory {
         // find the first byte containing the first bit of the pixel
         ptr += x * bpp / 8;
         
-        // assumption: one pixel is never spread across more than three bytes
-        String allBits = "";
-        for (int i=0; i < 3; i++)
-        {
-            allBits += getPaddedBitString(ptr + i);
-        }
+        // assumption: one pixel is never spread across more than four bytes
+        // read all bits into a long, in the sequence they are stored in the file.
+        // This means a "Big Endian" interpreation of the bytes, but only for
+        // one DWORD read
+        boolean oldSwapStatus = data.getSwap();
+        data.setSwap(true);
+        long allBits = data.getUint32(ptr);
+        data.setSwap(oldSwapStatus);
         
         // find the position of the first pixel within the first byte / string
-        int startPos = (x * bpp) % 8;
+        int firstBitIndex = (x * bpp) % 8;   // 0-based index of the first bit in the first byte, with index ZERO BEING THE MSB
+        firstBitIndex = 7 - firstBitIndex; // 0-based index of the first bit in the first byte, with index ZERO BEING THE LSB, as normal
+        firstBitIndex += 24;  // plus three bytes to get the 0-based index of the first bit within the DWORD
         
+        // find the 0-based index of the last bit
+        int lastBitIndex = firstBitIndex - bpp + 1;
+
+        // create a bit mask for the first bpp bits
+        long mask = (1L << bpp) - 1;
+
         // is it a read or write operation?
         if (newVal < 0) // read
         {
-            allBits = allBits.substring(startPos, startPos + bpp);
-            //assert (allBits.length() == bpp);
-            return Integer.parseInt(allBits, 2);
+            // make the last pixel bit the LSB within the word
+            allBits = allBits >> lastBitIndex;
+            
+            // mask out the first bpp bits to retrieve the pixel value
+            return (int) (allBits & mask);        
         }
         
         // write operation
         
         // limit the new value to the available bits
-        int maxVal = (1 << bpp) - 1;
-        newVal = Math.min(newVal, maxVal);
-        newVal = Math.max(0, newVal);
+        long nv = newVal & mask;
         
-        // convert it into a 0-padded bit string
-        String newValBitString = Integer.toBinaryString(newVal);
-        while (newValBitString.length() != bpp) newValBitString = "0" + newValBitString;
+        // shift new bits and mask to the correct position in the DWORD
+        nv = nv << lastBitIndex;
+        mask = mask << lastBitIndex;
         
-        // construct a new bitstring for all three bytes
-        String head = "";
-        String tail = "";
-        if (startPos != 0)
-        {
-            head = allBits.substring(0, startPos);
-        }
-        if (startPos + bpp < allBits.length())
-        {
-            tail = allBits.substring(startPos + bpp);
-        }
-        allBits = head + newValBitString + tail;
-        //assert (allBits.length() == 24);
+        // invert the mask... now everything is 1 except for the pixel values
+        mask = ((1L << 32) - 1) ^ mask;
         
-        // write data
-        for (int i=0; i < 3; i++)
-        {
-            int b = Integer.parseInt(allBits.substring(i*8, (i+1)*8), 2);
-            data.setByte(ptr + i, b);
-        }
+        // clear all pixel bits first and then set the bits
+        allBits = allBits & mask;
+        allBits = allBits | nv;
         
+        // write back the DWORK
+        data.setSwap(true);
+        data.setUint32(ptr, allBits);
+        data.setSwap(oldSwapStatus);
+                
         return newVal;
     }
     
