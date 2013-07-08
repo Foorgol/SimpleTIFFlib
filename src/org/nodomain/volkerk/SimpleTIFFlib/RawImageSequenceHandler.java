@@ -36,6 +36,22 @@ public class RawImageSequenceHandler extends LoggingClass{
     
     protected static final int FOOTER_FRAME_COUNT_OFFSET = 12;
     
+    protected static final int FOOTER_FRAME_SKIP_OFFSET = 16;
+    protected static final int FOOTER_FPSx1000_OFFSET = 20;
+    
+    protected static final int FOOTER_RAW_INFO_API_VERSION_OFFSET = 32;
+    //protected static final int FOOTER_RAW_INFO_BUFPTR_OFFSET = 40;
+    protected static final int FOOTER_RAW_INFO_HEIGHT_OFFSET = 40;
+    protected static final int FOOTER_RAW_INFO_WIDTH_OFFSET = 44;
+    protected static final int FOOTER_RAW_INFO_PITCH_OFFSET = 48;
+    protected static final int FOOTER_RAW_INFO_FRAMESIZE_OFFSET = 52;
+    protected static final int FOOTER_RAW_INFO_BPP_OFFSET = 56;
+    protected static final int FOOTER_RAW_INFO_BLACKLEVEL_OFFSET = 60;
+    protected static final int FOOTER_RAW_INFO_WHITELEVEL_OFFSET = 64;
+    protected static final int FOOTER_RAW_INFO_CROPFIELD_OFFSET = 68;
+    protected static final int FOOTER_RAW_INFO_ACTIVEAREA_OFFSET = 84;
+    protected static final int FOOTER_RAW_INFO_DYNAMICRANGE_OFFSET = 84+26*4;
+    
     /**
      * The Path for the RAW input file
      */
@@ -77,6 +93,13 @@ public class RawImageSequenceHandler extends LoggingClass{
         if (!(getMagic().equals(MAGIC)))
         {
             failed("Wrong file type; not a RAW file");
+            throw new IllegalArgumentException(fPath.toString() + " is not a valid RAW file");
+        }
+        
+        // make sure that this is 14 bpp, because we can't handle anything else
+        if (getRawInfo_BitsPerPixel() != 14)
+        {
+            failed("Wrong number of bits per pixel (need 14, got ", getRawInfo_BitsPerPixel(), ")");
             throw new IllegalArgumentException(fPath.toString() + " is not a valid RAW file");
         }
         
@@ -150,6 +173,108 @@ public class RawImageSequenceHandler extends LoggingClass{
         return getUint32();
     }
     
+    public long getFrameSkip()
+    {
+        seekInFooter(FOOTER_FRAME_SKIP_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getFrameRate1000()
+    {
+        seekInFooter(FOOTER_FPSx1000_OFFSET);
+        return getUint32();        
+    }
+    
+    public double getFrameRate()
+    {
+        return getFrameRate1000() / 1000.0;
+    }
+    
+    public long getRawInfo_APIVersion()
+    {
+        seekInFooter(FOOTER_RAW_INFO_API_VERSION_OFFSET);
+        return getUint32();        
+    }
+    
+//    public long getRawInfo_BufferPointer()
+//    {
+//        seekInFooter(FOOTER_RAW_INFO_BUFPTR_OFFSET);
+//        return getUint32();        
+//    }
+    
+    public long getRawInfo_Height()
+    {
+        seekInFooter(FOOTER_RAW_INFO_HEIGHT_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_Width()
+    {
+        seekInFooter(FOOTER_RAW_INFO_WIDTH_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_Pitch()
+    {
+        seekInFooter(FOOTER_RAW_INFO_PITCH_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_FrameSize()
+    {
+        seekInFooter(FOOTER_RAW_INFO_FRAMESIZE_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_BitsPerPixel()
+    {
+        seekInFooter(FOOTER_RAW_INFO_BPP_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_BlackLevel()
+    {
+        seekInFooter(FOOTER_RAW_INFO_BLACKLEVEL_OFFSET);
+        return getUint32();        
+    }
+    
+    public long getRawInfo_WhiteLevel()
+    {
+        seekInFooter(FOOTER_RAW_INFO_WHITELEVEL_OFFSET);
+        return getUint32();        
+    }
+    
+    public long[] getRawInfo_Crop()
+    {
+        seekInFooter(FOOTER_RAW_INFO_CROPFIELD_OFFSET);
+        long[] result = new long[4];
+        
+        for (int i=0; i<4; i++) result[i] = getUint32();
+        
+        return result;
+    }
+    
+    public long[] getRawInfo_ActiveArea()
+    {
+        seekInFooter(FOOTER_RAW_INFO_ACTIVEAREA_OFFSET);
+        long[] result = new long[4];
+        
+        for (int i=0; i<4; i++) result[i] = getUint32();
+        
+        return result;
+    }
+    
+    public long getRawInfo_DynamicRange100()
+    {
+        seekInFooter(FOOTER_RAW_INFO_DYNAMICRANGE_OFFSET);
+        return getUint32();        
+    }
+    
+    public double getRawInfo_DynamicRange()
+    {
+        return getRawInfo_DynamicRange100() / 100.0;
+    }
+    
     protected int getUint16()
     {
         try
@@ -180,7 +305,7 @@ public class RawImageSequenceHandler extends LoggingClass{
         }
         catch (Exception e)
         {
-            System.err.println("Aaaaaaaaaargh.......... getUint16 in RAW");
+            System.err.println("Aaaaaaaaaargh.......... getUint32 in RAW");
             System.exit(42);
         }
         
@@ -190,11 +315,44 @@ public class RawImageSequenceHandler extends LoggingClass{
     
     public void dumpInfo()
     {
+        System.err.println("----------- Raw File Footer -----------");
         System.err.println("Magic tokens: " + getMagic());
         System.err.println("Wdith: " + getWidth());
         System.err.println("Height: " + getHeight());
         System.err.println("Bytes per frame: " + getFrameSize());
         System.err.println("Frames in file: " + getFrameCount());
+        System.err.println("Frame skip: " + getFrameSkip());
+        System.err.println("Frame rate: " + getFrameRate());
+        System.err.println();
+        System.err.println("----------- Raw Info Struct -----------");
+        System.err.println("API version: " + getRawInfo_APIVersion());
+        //System.err.println("Buffer pointer: " + getRawInfo_BufferPointer());
+        System.err.println("Width: " + getRawInfo_Width());
+        System.err.println("Height: " + getRawInfo_Height());
+        System.err.println("Pitch: " + getRawInfo_Pitch());
+        System.err.println("Frame size: " + getRawInfo_FrameSize());
+        System.err.println("Bits per Pixel: " + getRawInfo_BitsPerPixel());
+        System.err.println("Black level: " + getRawInfo_BlackLevel());
+        System.err.println("White level: " + getRawInfo_WhiteLevel());
+        System.err.println("Crop x, y, w, h: " + arrayToString(getRawInfo_Crop()));
+        System.err.println("Active area x1, y1, x2, y2: " + arrayToString(getRawInfo_ActiveArea()));
+        System.err.println("Dynamic Range (EV): " + getRawInfo_DynamicRange());
+    }
 
+    /**
+     * Converts an array of longs to a string with comma-separated values for beautiful logging
+     * 
+     * @param longArray the array with the longs for conversion
+     * 
+     * @return a string with comma-separated longs
+     */
+    protected String arrayToString(long[] longArray)
+    {
+        String result = "";
+        for (long i : longArray)
+        {
+            result += i + ", ";
+        }
+        return result.substring(0, result.length()-2);
     }
 }
