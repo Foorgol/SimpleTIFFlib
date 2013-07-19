@@ -339,4 +339,14 @@ public class FlexByteArray extends LoggingClass {
         return data.length;
     }
     
+    /**
+     * Get a copy of the internal data
+     * 
+     * @return a copy (clone) of the internal data array
+     */
+    public byte[] getDataClone()
+    {
+        return data.clone();
+    }
+    
 }

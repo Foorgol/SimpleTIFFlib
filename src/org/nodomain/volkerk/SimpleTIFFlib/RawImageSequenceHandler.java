@@ -365,6 +365,16 @@ public class RawImageSequenceHandler extends LoggingClass{
         return result;
     }
     
+    /**
+     * Instantiates the RawFileFrame object for a specific frame number
+     * 
+     * All manipulations on the resulting object will be in memory only. The
+     * data has to be written back to file explicitly.
+     * 
+     * @param n the 0-based frame number
+     * 
+     * @return an instance of RawFileFrame of the selected frame
+     */
     public RawFileFrame getFrame(int n)
     {
         if (n >= getFrameCount())
@@ -409,5 +419,33 @@ public class RawImageSequenceHandler extends LoggingClass{
                 (int) getRawInfo_BitsPerPixel(), longArrayToIntArray(getRawInfo_ActiveArea()),
                 longArrayToIntArray(getRawInfo_Crop()));
         
+    }
+    public void writeFrameToFile(RawFileFrame f, int n)
+    {
+        if (f == null)
+        {
+            throw new IllegalArgumentException("Need a valid RawFileFrame object!");
+        }
+        
+        if (n >= getFrameCount())
+        {
+            throw new IllegalArgumentException("Frame number " + n + " is beyond file end!");
+        }
+        
+        byte data[] = f.getFrameData();        
+        if (data.length != getFrameSize())
+        {
+            throw new IllegalArgumentException("The RawFileFrame contains invalid data");
+        }
+        
+        try
+        {
+            fData.seek(n * getFrameSize());
+            fData.write(data);
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Couldn't write (all) frame data to the file!");
+        }
     }
 }

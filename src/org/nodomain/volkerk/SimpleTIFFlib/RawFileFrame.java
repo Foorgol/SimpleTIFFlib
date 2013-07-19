@@ -107,4 +107,14 @@ public class RawFileFrame extends Generic_CFA_PixBuf {
         return height;
     }
     
+    /**
+     * Returns a copy of the raw pixel data (e. g. for writing it back to the file)
+     * 
+     * @return a byte array with the raw pixel data
+     */
+    public byte[] getFrameData()
+    {
+        return data.getDataClone();
+    }
+    
 }
