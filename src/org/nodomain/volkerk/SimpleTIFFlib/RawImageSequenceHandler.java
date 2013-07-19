@@ -355,4 +355,59 @@ public class RawImageSequenceHandler extends LoggingClass{
         }
         return result.substring(0, result.length()-2);
     }
+    
+    protected int[] longArrayToIntArray(long[] a)
+    {
+        int[] result = new int[a.length];
+        
+        for (int i=0; i<a.length; i++) result[i] = (int) a[i];
+        
+        return result;
+    }
+    
+    public RawFileFrame getFrame(int n)
+    {
+        if (n >= getFrameCount())
+        {
+            throw new IllegalArgumentException("Frame number " + n + " is beyond file end!");
+        }
+        
+        try
+        {
+            fData.seek(n * getFrameSize());
+        }
+        catch (Exception e)
+        {
+            throw new IllegalArgumentException("Can't seek frame " + n + " in file!");
+        }
+        
+        int bytesRead = 0;
+        byte[] frameData = new byte[(int) getFrameSize()];
+        
+        while (bytesRead != frameData.length)
+        {
+            int cnt = -1;
+            
+            try
+            {
+                cnt = fData.read(frameData, bytesRead, frameData.length - bytesRead);
+            }
+            catch (Exception e)
+            {
+                throw new IllegalArgumentException("Can't read frame data from file!");
+            }
+            
+            if ((cnt == -1) && (bytesRead != frameData.length))
+            {
+                throw new IllegalArgumentException("Weird... couldn't read all frame data from file");
+            }
+            
+            bytesRead += cnt;
+        }
+        
+        return new RawFileFrame(new FlexByteArray(frameData), (int) getWidth(), (int) getHeight(),
+                (int) getRawInfo_BitsPerPixel(), longArrayToIntArray(getRawInfo_ActiveArea()),
+                longArrayToIntArray(getRawInfo_Crop()));
+        
+    }
 }

@@ -379,7 +379,30 @@ public abstract class Generic_CFA_PixBuf {
      * 
      * @return the offset of the first byte in "data" that contains pixel bits
      */
-    abstract protected long CFA_getPixOffsetInBuffer(int x, int y);
+    protected long CFA_getPixOffsetInBuffer(int x, int y)
+    {
+        int w = (int) imgWidth();
+        int h = (int) imgHeight();
+
+        if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
+        {
+            throw new IllegalArgumentException("Invalid coordinates: " + x + ", " + y);
+        }
+        
+        long ptr = CFA_getRowOffsetInBuffer(y);
+        ptr += x * CFA_getBitsPerPixel() / 8;
+        
+        return ptr;
+    }
+    
+    /**
+     * Returns the offset within the data block of the first byte of a row
+     * 
+     * @param row the 0-based y-coordinate of the pixel
+     * 
+     * @return the offset of the first byte in "data" that contains pixel bits
+     */
+    abstract protected long CFA_getRowOffsetInBuffer(int row);
     
     abstract public int imgWidth();
     abstract public int imgHeight();

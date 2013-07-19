@@ -745,55 +745,27 @@ public class ImageFileDirectory extends Generic_CFA_PixBuf {
     }
         
     /**
-     * Calculates the offset of the first byte in the data buffer which contains the first bit of the requested pixel
+     * Returns the offset within the data block of the first byte of a row
      * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
+     * @param row the 0-based y-coordinate of the pixel
      * 
      * @return the offset of the first byte in "data" that contains pixel bits
      */
-    protected long CFA_getPixOffsetInBuffer(int x, int y)
+    protected long CFA_getRowOffsetInBuffer(int row)
     {
         int w = (int) imgWidth();
-        int h = (int) imgHeight();
 
-        if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
-        {
-            throw new IllegalArgumentException("Invalid coordinates: " + x + ", " + y);
-        }
-        
         // calculate the strip base address
-        int stripNum = y / (int) RowsPerStrip();
+        int stripNum = row / (int) RowsPerStrip();
         long ptr = stripOffsets()[stripNum];
         
-        // If we have multiple pixels in one byte (color depth unequal 8, 16
-        // or 32), we need a special method to calc the offset
-        int bpp = CFA_getBitsPerPixel();
-        if (((bpp % 8) != 0) || (bpp == 24))
-        {
-            // calculate the offset of the row within the strip
-            // use the ceil()-function to account for the byte-padding at the end of each row
-            int bytesPerRow = (int) Math.ceil(w * bpp / 8.0);
-            ptr += (y % (int) RowsPerStrip()) * bytesPerRow;
-
-            // find the first byte containing the first bit of the pixel
-            ptr += x * bpp / 8;
-            
-            return ptr;
-        }
+        // calculate the number of bytes in a row
+        // use the ceil()-function to account for the byte-padding at the end of each row
+        int bytesPerRow = (int) Math.ceil(w * CFA_getBitsPerPixel() / 8.0);
         
-        //
-        // if we reach this point, bpp is either 8, 16 or 32
-        //
+        // add an offset for the row within the strip
+        ptr += (row % (int) RowsPerStrip()) * bytesPerRow;
         
-        int bytesPerPixel = bpp / 8;
-        
-        // calculate the offset of the row within the strip
-        ptr += (y % (int) RowsPerStrip()) * w * bytesPerPixel;
-        
-        // find the base address of the pixel
-        ptr += x * bytesPerPixel;
-
         return ptr;
     }
 
