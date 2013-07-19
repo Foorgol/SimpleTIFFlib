@@ -21,7 +21,7 @@ import javax.imageio.*;
  * A class representing an "Image File Directory" in a TIFF file.
  * Allows also for some manipulation of the picture data associated with the IFD
  */
-public class ImageFileDirectory {
+public class ImageFileDirectory extends Generic_CFA_PixBuf {
     
     /**
      * A hashmap which stores all IFD entries for this directory, accessible via entry tag
@@ -41,11 +41,6 @@ public class ImageFileDirectory {
     protected ImageFileDirectory parent = null;
     
     /**
-     * The complete TIFF file
-     */
-    protected FlexByteArray data;
-    
-    /**
      * The number of columns for the pattern of the color filter array
      */
     protected int cfaPatternCols;
@@ -59,6 +54,7 @@ public class ImageFileDirectory {
      * The color filter array pattern. Has patternCols x patternRows entries
      */
     protected int[] cfaPattern;
+    
     
     /**
      * Stores the Bits-Per-Sample value, because it's often used
@@ -85,8 +81,9 @@ public class ImageFileDirectory {
      */
     public ImageFileDirectory(FlexByteArray _data, int offset, ImageFileDirectory _parent)
     {
-        // store the data block
-        data = _data;
+        super(_data);
+        
+        // store the parent
         parent = _parent;
         
         // prepare an empty hashmap for the directory entries
@@ -198,11 +195,11 @@ public class ImageFileDirectory {
      * 
      * @return the width of the image in pixel
      */
-    public long imgWidth()
+    public int imgWidth()
     {
         IFD_Entry e = getEntry(TIFF_TAG.IMAGE_WIDTH);
         
-        if (e.getType() == IFD_Entry.ENTRY_TYPE.LONG) return e.getLong();
+        if (e.getType() == IFD_Entry.ENTRY_TYPE.LONG) return (int) e.getLong();
         return e.getInt();
     }
     
@@ -211,11 +208,11 @@ public class ImageFileDirectory {
      * 
      * @return the height of the image in pixel
      */
-    public long imgLen()
+    public int imgHeight()
     {
         IFD_Entry e = getEntry(TIFF_TAG.IMAGE_LENGTH);
         
-        if (e.getType() == IFD_Entry.ENTRY_TYPE.LONG) return e.getLong();
+        if (e.getType() == IFD_Entry.ENTRY_TYPE.LONG) return (int) e.getLong();
         return e.getInt();
     }
     
@@ -546,7 +543,7 @@ public class ImageFileDirectory {
     public long[] DNG_ActiveArea()
     {
         // Default: the whole image is the active area
-        if (!(hasTag(TIFF_TAG.DNG_ACTIVE_AREA))) return new long[] {0, 0, imgWidth(), imgLen()};
+        if (!(hasTag(TIFF_TAG.DNG_ACTIVE_AREA))) return new long[] {0, 0, imgWidth(), imgHeight()};
         
         IFD_Entry e = getEntry(TIFF_TAG.DNG_ACTIVE_AREA);
         long[] tmpLong = new long[] {0, 0, 0, 0};
@@ -599,7 +596,7 @@ public class ImageFileDirectory {
     public long[] DNG_DefaultCropSize()
     {
         // Default: no cropping
-        if (!(hasTag(TIFF_TAG.DNG_DEFAULT_CROP_SIZE))) return new long[] {imgWidth(), imgLen()};
+        if (!(hasTag(TIFF_TAG.DNG_DEFAULT_CROP_SIZE))) return new long[] {imgWidth(), imgHeight()};
         
         IFD_Entry e = getEntry(TIFF_TAG.DNG_DEFAULT_CROP_SIZE);
         
@@ -616,7 +613,7 @@ public class ImageFileDirectory {
         }
         
         // values stored as RATIONAL: not yet supported
-        return new long[] {imgWidth(), imgLen()};
+        return new long[] {imgWidth(), imgHeight()};
     }
     
     /**
@@ -637,7 +634,7 @@ public class ImageFileDirectory {
     public void dumpInfo()
     {
         System.err.println("--------------------- TIFF tags ---------------------");
-        System.err.println("Image size: " + imgWidth() + " x " + imgLen());
+        System.err.println("Image size: " + imgWidth() + " x " + imgHeight());
         System.err.println("Image is compressed: " + isCompressed());
         System.err.println("Samples per pixel: " + samplesPerPixel());
         System.err.println("Bits per sample: " + bitsPerSampleStr());
@@ -696,227 +693,7 @@ public class ImageFileDirectory {
         }
         return result.substring(0, result.length()-2);
     }
-    
-    /**
-     * Determines the color (red, green or blue) of a specific pixel in a CFA image
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * 
-     * @return 0=R, 1=G, 2=B for the pixel color
-     */
-    public int CFA_coord2color(int x, int y)
-    {
-        // determine the current pixel color
-        int patternX = x % cfaPatternCols;
-        int patternY = y % cfaPatternRows;
-        return cfaPattern[patternY * cfaPatternCols + patternX];
-    }
-    
-    /**
-     * Takes a single CFA-pixel intensity value and puts it into the right position
-     * in an array of ints which represents RGB-colors
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * @param col the intensity value to store
-     * 
-     * @return an int-array with RGB-values at index 0, 1, 2
-     */
-    public int[] CFA_col2rgb(int x, int y, int col)
-    {
-        int[] result = new int[]{0,0,0};
         
-        int color = CFA_coord2color(x, y);
-        
-        result[color] = col;
-        
-        return result;
-    }
-    
-    /**
-     * Converts an 8-bit intensity value of a pixel into a single
-     * integer representing an RGB-value
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * @param col the intensity value to store
-     * 
-     * @return an int with B in the LSB, G in the second byte and R in the third
-     */
-    public int CFA_col2rgbInt(int x, int y, int col)
-    {
-        int[] rgb = CFA_col2rgb(x, y, col);
-        
-        return ((rgb[0] << 16) + (rgb[1] << 8) + rgb[2]);
-    }
-    
-    /**
-     * Returns the intensity value of a pixel in an CFA image
-     * Works only for CFA-images stored in strips.
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * 
-     * @return the intensity of the pixel as int
-     */
-    public int CFA_getPixel(int x, int y)
-    {
-        return CFA_setPixel(x, y, -1);
-    }
-    
-    /**
-     * Gets or sets the intensity value of a pixel in an CFA image
-     * Works only for CFA-images stored in strips.
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * @param newVal the new intensity value for the pixel; set to -1 to return the current value
-     * 
-     * @return the intensity of the pixel as int, if newVal=-1
-     */
-    public int CFA_setPixel(int x, int y, int newVal)
-    {
-        int w = (int) imgWidth();
-        int h = (int) imgLen();
-
-        if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
-        {
-            throw new IllegalArgumentException("Invalid coordinates: " + x + ", " + y);
-        }
-        
-        // If we have multiple pixels in one byte (color depth unequal 8, 16
-        // or 32), we need a special method to puzzle the bits for one pixel together
-        int bpp = bps[0];
-        if (((bpp % 8) != 0) || (bpp == 24)) return CFA_setPixel_BitPuzzle(x, y, newVal);
-        
-        // calculate the strip base address
-        int stripNum = y / (int) RowsPerStrip();
-        int ptr = (int) stripOffsets()[stripNum];
-        int bytesPerPixel = bpp / 8;
-        
-        // calculate the offset of the row within the strip
-        // use the ceil()-function to account for the byte-padding at the end of each row
-        ptr += (y % (int) RowsPerStrip()) * w * bytesPerPixel;
-        
-        // find the base address of the pixel
-        ptr += x * bytesPerPixel;
-        
-        // is it only a getPixel-call?
-        if (newVal < 0)
-        {
-            if (bytesPerPixel == 1) return data.getByte(ptr);
-            else if (bytesPerPixel == 2) return data.getUint16(ptr);
-            return (int) (data.getUint32(ptr));  // Will fail for 32 bpp, because Uint32 does fit into int
-        }
-        
-        if (bytesPerPixel == 1) data.setByte(ptr, newVal);
-        else if (bytesPerPixel == 2) data.setUint16(ptr, newVal);
-        else data.setUint32(ptr, newVal);  // will fail for 32 bpp
-        
-        return newVal;
-    }
-    
-    /**
-     * Gets or sets the intensity value of a pixel in an CFA image
-     * Works only for CFA-images stored in strips.
-     * 
-     * Designed for bits per pixel != 8, 16 or 32
-     * 
-     * @param x the 0-based x-coordinate of the pixel
-     * @param y the 0-based y-coordinate of the pixel
-     * @param newVal the new intensity value for the pixel; set to -1 to return the current value
-     * 
-     * @return the intensity of the pixel as int, if newVal=-1
-     */
-    protected int CFA_setPixel_BitPuzzle(int x, int y, int newVal)
-    {
-        int w = (int) imgWidth();
-        int h = (int) imgLen();
-        int bpp = bps[0];
-        
-        // calculate the strip base address
-        int stripNum = y / (int) RowsPerStrip();
-        int ptr = (int) stripOffsets()[stripNum];
-        
-        // calculate the offset of the row within the strip
-        // use the ceil()-function to account for the byte-padding at the end of each row
-        int bytesPerRow = (int) Math.ceil(w * bpp / 8.0);
-        ptr += (y % (int) RowsPerStrip()) * bytesPerRow;
-        
-        // find the first byte containing the first bit of the pixel
-        ptr += x * bpp / 8;
-        
-        // assumption: one pixel is never spread across more than four bytes
-        // read all bits into a long, in the sequence they are stored in the file.
-        // This means a "Big Endian" interpreation of the bytes, but only for
-        // one DWORD read
-        boolean oldSwapStatus = data.getSwap();
-        data.setSwap(true);
-        long allBits = data.getUint32(ptr);
-        data.setSwap(oldSwapStatus);
-        
-        // find the position of the first pixel within the first byte / string
-        int firstBitIndex = (x * bpp) % 8;   // 0-based index of the first bit in the first byte, with index ZERO BEING THE MSB
-        firstBitIndex = 7 - firstBitIndex; // 0-based index of the first bit in the first byte, with index ZERO BEING THE LSB, as normal
-        firstBitIndex += 24;  // plus three bytes to get the 0-based index of the first bit within the DWORD
-        
-        // find the 0-based index of the last bit
-        int lastBitIndex = firstBitIndex - bpp + 1;
-
-        // create a bit mask for the first bpp bits
-        long mask = (1L << bpp) - 1;
-
-        // is it a read or write operation?
-        if (newVal < 0) // read
-        {
-            // make the last pixel bit the LSB within the word
-            allBits = allBits >> lastBitIndex;
-            
-            // mask out the first bpp bits to retrieve the pixel value
-            return (int) (allBits & mask);        
-        }
-        
-        // write operation
-        
-        // limit the new value to the available bits
-        long nv = newVal & mask;
-        
-        // shift new bits and mask to the correct position in the DWORD
-        nv = nv << lastBitIndex;
-        mask = mask << lastBitIndex;
-        
-        // invert the mask... now everything is 1 except for the pixel values
-        mask = ((1L << 32) - 1) ^ mask;
-        
-        // clear all pixel bits first and then set the bits
-        allBits = allBits & mask;
-        allBits = allBits | nv;
-        
-        // write back the DWORK
-        data.setSwap(true);
-        data.setUint32(ptr, allBits);
-        data.setSwap(oldSwapStatus);
-                
-        return newVal;
-    }
-    
-    /**
-     * Converts a single byte in the TIFF data block into binary string padded to 8 characters
-     * 
-     * @param ptr the address of the byte within the TIFF data block
-     * 
-     * @return A string of "0" and "1" with the bits of the byte, padded to 8 characters
-     */
-    protected String getPaddedBitString(int ptr)
-    {
-        int b = data.getByte(ptr);
-        String result = Integer.toBinaryString(b);
-        while (result.length() != 8) result = "0" + result;
-        
-        return result;
-    }
-    
     /**
      * Dumps some debug info about a specific pixel to stderr
      * 
@@ -966,447 +743,91 @@ public class ImageFileDirectory {
             for (int cnt=0; cnt < ((int) (counts[s])); cnt++) data.setByte(ptr+cnt, val);
         }
     }
-    
-    
+        
     /**
-     * Returns the CFA image data into an 2-dim array of ints,
-     * which each int representing the intensity of one pixel
+     * Calculates the offset of the first byte in the data buffer which contains the first bit of the requested pixel
      * 
-     * Designed for images with bits-per-sample == 8 or 16
+     * @param x the 0-based x-coordinate of the pixel
+     * @param y the 0-based y-coordinate of the pixel
      * 
-     * Will also be executed for bpp == 32, but will finally fail, because
-     * 32 bpp does not fit into an int array as return value
-     * 
-     * Works only for CFA-images stored in strips.
-     * 
-     * @return a 2-dim int array with color intensities for each pixel in the image
+     * @return the offset of the first byte in "data" that contains pixel bits
      */
-    public int[][] CFA_getPixelData()
+    protected long CFA_getPixOffsetInBuffer(int x, int y)
     {
-        int bpp = bps[0];
+        int w = (int) imgWidth();
+        int h = (int) imgHeight();
+
+        if ((x >= w) || (y >= h) || (x < 0) || (y < 0))
+        {
+            throw new IllegalArgumentException("Invalid coordinates: " + x + ", " + y);
+        }
+        
+        // calculate the strip base address
+        int stripNum = y / (int) RowsPerStrip();
+        long ptr = stripOffsets()[stripNum];
         
         // If we have multiple pixels in one byte (color depth unequal 8, 16
-        // or 32), we need a special method to puzzle the bits for one pixel together
-        if (((bpp % 8) != 0) || (bpp == 24)) return CFA_getPixelData_BitPuzzle();
-        
-        int w = (int) imgWidth();
-        int h = (int) imgLen();
-        
-        int[][] result = new int[w][h];
-        
-        int bytesPerSample = bpp / 8;
-        
-        int row = 0;
-        
-        for (int n=0; n < stripsPerImage(); n++)
+        // or 32), we need a special method to calc the offset
+        int bpp = CFA_getBitsPerPixel();
+        if (((bpp % 8) != 0) || (bpp == 24))
         {
-            int ptr = (int) stripOffsets()[n];
-            int x = 0;
-            int cnt = 0;
-            
-            while ((cnt * bytesPerSample) < stripByteCounts()[n])
-            {
-                // IMPORTANT NOTE: THIS WILL FAIL FOR 32 bpp
-                int newPixelValue;
-                
-                if (bytesPerSample == 1) newPixelValue = data.getByte(ptr + cnt);
-                else if (bytesPerSample == 2) newPixelValue = data.getUint16(ptr + 2*cnt);
-                else newPixelValue = (int) data.getUint32(ptr + cnt*4);  // THIS WILL FAIL FOR 32 BPP!!
-                
-                cnt++; // next pixel
-                
-                result[x][row] = newPixelValue;
+            // calculate the offset of the row within the strip
+            // use the ceil()-function to account for the byte-padding at the end of each row
+            int bytesPerRow = (int) Math.ceil(w * bpp / 8.0);
+            ptr += (y % (int) RowsPerStrip()) * bytesPerRow;
 
-                // start a new row, if necessary
-                x++;
-                if (x >= w)
-                {
-                    x = 0;
-                    row++;
-                }
-                    
-            }
+            // find the first byte containing the first bit of the pixel
+            ptr += x * bpp / 8;
+            
+            return ptr;
         }
+        
+        //
+        // if we reach this point, bpp is either 8, 16 or 32
+        //
+        
+        int bytesPerPixel = bpp / 8;
+        
+        // calculate the offset of the row within the strip
+        ptr += (y % (int) RowsPerStrip()) * w * bytesPerPixel;
+        
+        // find the base address of the pixel
+        ptr += x * bytesPerPixel;
+
+        return ptr;
+    }
+
+    @Override
+    public int CFA_getBitsPerPixel() {
+        return bps[0];
+    }
+
+    @Override
+    public int[] CFA_getActiveArea() {
+        long[] x = DNG_ActiveArea();
+        
+        return new int[] {(int) x[0], (int) x[1], (int) x[2], (int) x[3]};
+    }
+
+    @Override
+    public int[] CFA_getCropInfo() {
+        int[] result = new int[4];
+        
+        result[0] = (int) DNG_DefaultCropOrigin()[0];
+        result[1] = (int) DNG_DefaultCropOrigin()[1];
+        result[2] = (int) DNG_DefaultCropSize()[0];
+        result[3] = (int) DNG_DefaultCropSize()[1];
+        
         return result;
     }
-    
-    /**
-     * Returns the CFA image data into an 2-dim array of ints,
-     * which each int representing the intensity of one pixel
-     * 
-     * Designed for images with bits-per-sample != 8, 16, 32
-     * 
-     * Works only for CFA-images stored in strips.
-     * 
-     * @return a 2-dim int array with color intensities for each pixel in the image
-     */
-    protected int[][] CFA_getPixelData_BitPuzzle()
-    {
-        int w = (int) imgWidth();
-        int h = (int) imgLen();
-        
-        int[][] result = new int[w][h];
-        
-        int bpp = bps[0];
-        int row = 0;
-        
-        for (int n=0; n < stripsPerImage(); n++)
-        {
-            int ptr = (int) stripOffsets()[n];
-            int x = 0;
-            int cnt = 0;
-            String bits = "";
-            
-            while ((cnt < stripByteCounts()[n]) && (row < h))
-            {
-                // read the next byte in the data stream
-                // and append the new bits to the old bits on the right end
-                bits += getPaddedBitString(ptr + cnt);
-                cnt++;
-                
-                // if we've reached one full pixel, read out the pixel
-                if (bits.length() >= bpp)
-                {
-                    // get the substring with the first "bpp" bits from the left
-                    String binPix = bits.substring(0, bpp);
 
-                    // remove the first "bpp" bits from the string
-                    bits = bits.substring(bpp);
-                    
-                    // convert the binary string into a value and store it
-                    int newPixelValue = Integer.parseInt(binPix, 2);
-                    result[x][row] = newPixelValue;
-
-                    // start a new row, if necessary
-                    x++;
-                    if (x >= w)
-                    {
-                        x = 0;
-                        row++;
-                        bits = "";
-                    }
-                    
-                }
-            }
-        }
-        return result;
+    @Override
+    public int[] CFA_getPatternDim() {
+        return new int[] {cfaPatternCols, cfaPatternRows};
     }
-    
-    /**
-     * Writes the CFA data into a PNG without demosaicing. If the CFA has more
-     * than 8 bits per pixel, all intensity values are scaled down to 8 bits
-     * 
-     * Works only for CFA-images stored in strips.
-     * 
-     * @param destFileName the filename to write the PNG to
-     * @param useGrayscale if true, the data is stored as grayscale (R=G=B for each pixel)
-     */
-    public void CFA_raw2png(String destFileName, boolean useGrayscale)
-    {
-        int[][] rawData = CFA_getPixelData();
-        
-        // convert to 8-bit color depth, if necessary
-        int bpp = bps[0];
-        if (bpp > 8)
-        {
-            int bitDiff = bpp - 8;
-            
-            for (int y=0; y < imgLen(); y++)
-            {
-                for (int x=0; x < imgWidth(); x++)
-                {
-                    rawData[x][y] = rawData[x][y] >> bitDiff;
-                }
-            }
-        }
-        
-        // create a new buffered image
-        BufferedImage img = new BufferedImage((int)imgWidth(), (int)imgLen(), BufferedImage.TYPE_INT_RGB);
-        
-        // write all pixels
-        for (int y=0; y < imgLen(); y++)
-        {
-            for (int x=0; x < imgWidth(); x++)
-            {
-                int col;
-                if (useGrayscale)
-                {
-                    col = rawData[x][y];
-                    col += (col << 16) + (col << 8);
-                }
-                else
-                {
-                    col = CFA_col2rgbInt(x, y, rawData[x][y]);
-                }
-                img.setRGB(x, y, col);
-            }
-        }
-        
-        // write the file
-        File outfile = new File(destFileName);
-        
-        try
-        {
-            ImageIO.write(img, "png", outfile);
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Could not write image to " + destFileName);
-        }
-    }
-    
-    /**
-     * A very primitive demosaicing for testing purposes. Results are written to a PNG file
-     * 
-     * Works only for CFA-images stored in strips.
-     * 
-     * @param destFileName the filename to write the PNG to
-     */
-    public void CFA_primitiveDemosaic(String destFileName)
-    {
-        int[][] rawData = CFA_getPixelData();
-        int w = (int) imgWidth();
-        int h = (int) imgLen();
-        
-        double[][][] demosData = new double[w][h][3];
-        
-        // create a new buffered image
-        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-        
-        // keep track of the overall maximum value for each color component
-        double maxR = -1;
-        double maxG = -1;
-        double maxB = -1;
-        
-        // loop over all pixels and interpolate them one by one
-        for (int y=0; y < h; y++)
-        {
-            for (int x=0; x < w; x++)
-            {
-                // get the color type
-                int color = CFA_coord2color(x, y);
-                
-                // target variable for the RGB-values for this pixel
-                double r=0;
-                double g=0;
-                double b=0;
-                
-                double tmp = 0;
-                double cnt = 0;
-                    
-                // apply different interpolation algorithms, depending on the color
-                if (color == 0) // red pixel, need to find blue and green
-                {
-                    r = rawData[x][y];
-                    
-                    // green: use the green pixel left, right, above and below the red pixel
-                    if ((x-1) >= 0)
-                    {
-                        tmp += rawData[x-1][y];
-                        cnt++;
-                    }
-                    if ((x+1) < w)
-                    {
-                        tmp += rawData[x+1][y];
-                        cnt++;
-                    }
-                    if ((y-1) >= 0)
-                    {
-                        tmp += rawData[x][y-1];
-                        cnt++;
-                    }
-                    if ((y+1) < h)
-                    {
-                        tmp += rawData[x][y+1];
-                        cnt++;
-                    }
-                    
-                    g = tmp / cnt;
-                    
-                    // blue: use the blue pixel at the top left, top right, bottom left, bottom right of the red pixel
-                    tmp = 0;
-                    cnt = 0;
-                    if (((x-1) >= 0) && ((y-1) >= 0))
-                    {
-                        tmp += rawData[x-1][y-1];
-                        cnt++;
-                    }
-                    if (((x+1) < w) && ((y-1) >= 0))
-                    {
-                        tmp += rawData[x+1][y-1];
-                        cnt++;
-                    }
-                    if (((x-1) >= 0) && ((y+1) < h))
-                    {
-                        tmp += rawData[x-1][y+1];
-                        cnt++;
-                    }
-                    if (((x+1) < w) && ((y+1) < h))
-                    {
-                        tmp += rawData[x+1][y+1];
-                        cnt++;
-                    }
-                    
-                    b = tmp / cnt;
-                }
-                
-                else if (color == 1)  // green pixel: need to find red and blue
-                {
-                    g = rawData[x][y];
-                    
-                    // neighbor1: use the pixel left and right of the green pixel
-                    if ((x-1) >= 0)
-                    {
-                        tmp += rawData[x-1][y];
-                        cnt++;
-                    }
-                    if ((x+1) < w)
-                    {
-                        tmp += rawData[x+1][y];
-                        cnt++;
-                    }
-                    
-                    double n1 = tmp / cnt;
-                    
-                    // neighbor2: use the pixel above and below the green pixel
-                    tmp = 0;
-                    cnt = 0;
-                    if ((y-1) >= 0)
-                    {
-                        tmp += rawData[x][y-1];
-                        cnt++;
-                    }
-                    if ((y+1) < h)
-                    {
-                        tmp += rawData[x][y+1];
-                        cnt++;
-                    }
-                    
-                    double n2 = tmp / cnt;
-                    
-                    // in EVEN rows, n1 is red and n2 is blue;
-                    // vice versa in ODD rows
-                    if ((y % 2) == 0)
-                    {
-                        r = n1;
-                        b = n2;
-                    }
-                    else
-                    {
-                        r = n2;
-                        b = n1;
-                    }
-                }
-                
-                // blue pixel; need red and green
-                else
-                {
-                    b = rawData[x][y];
-                    
-                    // green: use the green pixel left, right, above and below the blue pixel
-                    if ((x-1) >= 0)
-                    {
-                        tmp += rawData[x-1][y];
-                        cnt++;
-                    }
-                    if ((x+1) < w)
-                    {
-                        tmp += rawData[x+1][y];
-                        cnt++;
-                    }
-                    if ((y-1) >= 0)
-                    {
-                        tmp += rawData[x][y-1];
-                        cnt++;
-                    }
-                    if ((y+1) < h)
-                    {
-                        tmp += rawData[x][y+1];
-                        cnt++;
-                    }
-                    
-                    g = tmp / cnt;
-                    
-                    // red: use the red pixel at the top left, top right, bottom left, bottom right of the blue pixel
-                    tmp = 0;
-                    cnt = 0;
-                    if (((x-1) >= 0) && ((y-1) >= 0))
-                    {
-                        tmp += rawData[x-1][y-1];
-                        cnt++;
-                    }
-                    if (((x+1) < w) && ((y-1) >= 0))
-                    {
-                        tmp += rawData[x+1][y-1];
-                        cnt++;
-                    }
-                    if (((x-1) >= 0) && ((y+1) < h))
-                    {
-                        tmp += rawData[x-1][y+1];
-                        cnt++;
-                    }
-                    if (((x+1) < w) && ((y+1) < h))
-                    {
-                        tmp += rawData[x+1][y+1];
-                        cnt++;
-                    }
-                    
-                    r = tmp / cnt;
-                }
-                
-                demosData[x][y][0] = r;
-                demosData[x][y][1] = g;
-                demosData[x][y][2] = b;
-                
-                if (r > maxR) maxR = r;
-                if (g > maxG) maxG = g;
-                if (b > maxB) maxB = b;
-            }
-        }
-        
-        // find the overall maximum intensity for a later
-        // normalization to 8-bit
-        double maxVal = Math.max(maxR, maxG);
-        maxVal = Math.max(maxVal, maxB);
-        
-        // tweak the factors a bit. values empirically established.
-        // I guess this is something like whitebalance-adjustment
-        maxVal *= 0.4;
-        maxR *= 0.75 * 0.5;
-        maxG *= 1.15 * 0.5;
-        maxB *= 1.1 * 0.5;
-        
-        // normalize all color values to 8 bit and store them in
-        // the data structures for a PNG
-        for (int y=0; y < h; y++)
-        {
-            for (int x=0; x < w; x++)
-            {
-                int r = (int) (demosData[x][y][0] / maxR * 255);
-                int g = (int) (demosData[x][y][1] / maxG * 255);
-                int b = (int) (demosData[x][y][2] / maxB * 255);
-                
-                r = Math.min(r, 255);
-                g = Math.min(g, 255);
-                b = Math.min(b, 255);
-                
-                int col = (r << 16) + (g << 8) + b;
-                img.setRGB(x, y, col);
-            }
-        }
 
-        
-        // write the file
-        File outfile = new File(destFileName);
-        
-        try
-        {
-            ImageIO.write(img, "png", outfile);
-        }
-        catch (Exception e)
-        {
-            throw new IllegalArgumentException("Could not write image to " + destFileName);
-        }
-  
+    @Override
+    public int[] CFA_getPattern() {
+        return cfaPattern;
     }
 }
