@@ -26,7 +26,7 @@ public class ImageFileDirectoryTest extends TstBaseClass {
         
         ifd1.dumpInfo();
         assert(ifd2.imgWidth() == 1280);
-        assert(ifd2.imgLen() == 720);
+        assert(ifd2.imgHeight() == 720);
         assertTrue(ifd2.samplesPerPixel() == 1);
         assertTrue(ifd2.bitsPerSample()[0] == 14);
         assertTrue(ifd2.bitsPerSample().length == 1);
@@ -45,7 +45,7 @@ public class ImageFileDirectoryTest extends TstBaseClass {
         assertTrue(ifd2.cfaPatternDim().length == 2); // CFA image
         
         assertTrue(ifd1.imgWidth() == 128);
-        assertTrue(ifd1.imgLen() == 96);
+        assertTrue(ifd1.imgHeight() == 96);
         assertTrue(ifd1.samplesPerPixel() == 3);
         assertTrue(ifd1.bitsPerSample()[0] == 8);
         assertTrue(ifd1.bitsPerSample()[1] == 8);
@@ -76,7 +76,7 @@ public class ImageFileDirectoryTest extends TstBaseClass {
         assertTrue(ifd1.getSubIFDs().length == 1);
         ImageFileDirectory ifd2 = ifd1.getSubIFDs()[0];
         assert(ifd2.imgWidth() == 1280);
-        assert(ifd2.imgLen() == 720);
+        assert(ifd2.imgHeight() == 720);
         assertFalse(ifd2.hasSubDirs());
         assertNull(ifd2.getSubIFDs());
         
