@@ -420,6 +420,13 @@ public class RawImageSequenceHandler extends LoggingClass{
                 longArrayToIntArray(getRawInfo_Crop()));
         
     }
+    
+    /**
+     * Write a RawFileFrame back to the RAW file
+     * 
+     * @param f the RawFileFrame instance with the data to be written
+     * @param n the 0-based frame number within the RAW file to write to
+     */
     public void writeFrameToFile(RawFileFrame f, int n)
     {
         if (f == null)
