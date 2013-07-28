@@ -663,5 +663,80 @@ public abstract class Generic_CFA_PixBuf {
   
     }
     
+    /**
+     * Prints some information about the pixel buffer to stderr
+     */
+    public void dumpInfo()
+    {
+        System.err.println("--------------------- CFA_PiXBuf ---------------------");
+        System.err.println("Width = " + imgWidth());
+        System.err.println("Height = " + imgHeight());
+        System.err.println("Bits per pixel = " + CFA_getBitsPerPixel());
+        System.err.println("Data length = " + data.length());
+        System.err.println("Active area = " + CFA_getActiveArea());
+        System.err.println("Default crop = " + CFA_getCropInfo());
+        System.err.println("");
+    }
+    
+    /**
+     * Set the complete data field (can be more than just CFA data!!) to zero
+     */
+    public void clearAllData()
+    {
+        for (int ptr=0; ptr < data.length(); ptr += 4)
+        {
+            data.setUint32(ptr, 0l);
+        }
+        
+        // set the last three bytes, in case the data length is not
+        // a multiple of four
+        int ptr = data.length() -1;
+        data.setByte(ptr, 0);
+        data.setByte(ptr-1, 0);
+        data.setByte(ptr-2, 0);
+    }
+    
+    /**
+     * Compares the CFA data of two pixBufs
+     * 
+     * @param ref the buffer to compare with
+     * 
+     * @return true if this object and the reference object contain identical CFA data; else otherwise
+     */
+    public boolean isCFADataIdenticalWith(Generic_CFA_PixBuf ref)
+    {
+        if (ref == null) return false;
+        if (ref.CFA_getDataLength() != data.length()) return false;
+        
+        // compare word by word
+        for (int ptr=0; ptr < data.length(); ptr += 4)
+        {
+            long d1 = data.getUint32(ptr);
+            long d2 = ref.data.getUint32(ptr);
+            if (d1 != d2) return false;
+        }
+        
+        // compare the last three bytes separately, in case the field length
+        // was not a multiple of four
+        for (int i = -1; i > -4; i--)
+        {
+            int ptr = data.length() - i;
+            long d1 = data.getUint32(ptr);
+            long d2 = ref.data.getUint32(ptr);
+            if (d1 != d2) return false;            
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Returns the size of the internal data field
+     * 
+     * @return the size of the data field (can be more than the CFA buffer!) in bytes
+     */
+    public long CFA_getDataLength()
+    {
+        return data.length();
+    }
 
 }

@@ -11,6 +11,8 @@
  */
 package org.nodomain.volkerk.SimpleTIFFlib;
 
+import java.io.EOFException;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
@@ -75,7 +77,7 @@ public class RawImageSequenceHandler extends LoggingClass{
         preLog(LVL_DEBUG, "Trying to open RandomAccessFile for ", fPath);
         try
         {
-            fData = new RandomAccessFile(fPath.toString(), "r");
+            fData = new RandomAccessFile(fPath.toString(), "rws");
         }
         catch (Exception e)
         {
@@ -382,43 +384,57 @@ public class RawImageSequenceHandler extends LoggingClass{
             throw new IllegalArgumentException("Frame number " + n + " is beyond file end!");
         }
         
+        byte[] frameData = new byte[(int) getFrameSize()];
+        
+        logPush("Reading ", getFrameSize(), " bytes from RAW file");
         try
         {
+            long pos = n * getFrameSize();
             fData.seek(n * getFrameSize());
+            assert(fData.getFilePointer() == pos);
+            fData.readFully(frameData);
+            frameData = swapBytes(frameData);
+        }
+        catch (EOFException e)
+        {
+            throw new IllegalArgumentException("Weird... couldn't read all frame data from file");
         }
         catch (Exception e)
         {
-            throw new IllegalArgumentException("Can't seek frame " + n + " in file!");
+            throw new IllegalArgumentException("Can't read frame data from file: " + e.getMessage());
         }
+            
+        logPop("Done");
         
-        int bytesRead = 0;
-        byte[] frameData = new byte[(int) getFrameSize()];
-        
-        while (bytesRead != frameData.length)
-        {
-            int cnt = -1;
-            
-            try
-            {
-                cnt = fData.read(frameData, bytesRead, frameData.length - bytesRead);
-            }
-            catch (Exception e)
-            {
-                throw new IllegalArgumentException("Can't read frame data from file!");
-            }
-            
-            if ((cnt == -1) && (bytesRead != frameData.length))
-            {
-                throw new IllegalArgumentException("Weird... couldn't read all frame data from file");
-            }
-            
-            bytesRead += cnt;
-        }
+//        return new RawFileFrame(new FlexByteArray(frameData), (int) getWidth(), (int) getHeight(),
+//                (int) getRawInfo_BitsPerPixel(), longArrayToIntArray(getRawInfo_ActiveArea()),
+//                longArrayToIntArray(getRawInfo_Crop()));
         
         return new RawFileFrame(new FlexByteArray(frameData), (int) getWidth(), (int) getHeight(),
-                (int) getRawInfo_BitsPerPixel(), longArrayToIntArray(getRawInfo_ActiveArea()),
-                longArrayToIntArray(getRawInfo_Crop()));
+                (int) getRawInfo_BitsPerPixel());
+    }
+    
+    /**
+     * Takes a byte array with an even number of bytes and swap the bytes
+     * on odd positions with its even neighbors.
+     * 
+     * @param buf the array to swap
+     * 
+     * @return an array with the swapped content or null if the array length not even
+     */
+    protected byte[] swapBytes(byte[] buf)
+    {
+        // this method works only with an even number of bytes
+        if ((buf.length % 2) != 0) return null;
         
+        byte[] result = new byte[buf.length];
+        for (int ptr=0; ptr < buf.length; ptr+= 2)
+        {
+            result[ptr] = buf[ptr+1];
+            result[ptr+1] = buf[ptr];
+        }
+        
+        return result;
     }
     
     /**
@@ -447,6 +463,7 @@ public class RawImageSequenceHandler extends LoggingClass{
         
         try
         {
+            data = swapBytes(data);
             fData.seek(n * getFrameSize());
             fData.write(data);
         }

@@ -36,6 +36,7 @@ public class RawFileFrame extends Generic_CFA_PixBuf {
     protected int[] crop;
     
     /**
+     * Constructor with the full data set
      * 
      * @param _buf FlexByteArray containing the CFA data of the frame
      * @param _w width of the frame in pixels
@@ -53,6 +54,24 @@ public class RawFileFrame extends Generic_CFA_PixBuf {
         bpp = _bpp;
         activeArea = aa;
         crop = _crop;
+    }
+    
+    /**
+     * Alternative constructor which sets Active Area and Default Crop to the whole image
+     * 
+     * @param _buf FlexByteArray containing the CFA data of the frame
+     * @param _w width of the frame in pixels
+     * @param _h height of the frame in pixels
+     * @param _bpp bits per pixel
+     */
+    public RawFileFrame(FlexByteArray _buf, int _w, int _h, int _bpp)
+    {
+        this(_buf, _w, _h, _bpp, new int[]{0, 0, _w, _h}, new int[]{0, 0, _w, _h});
+    }
+    
+    public RawFileFrame getCopy()
+    {
+        return new RawFileFrame(new FlexByteArray(data.getDataClone()), width, height, bpp, activeArea, crop);
     }
 
     @Override
